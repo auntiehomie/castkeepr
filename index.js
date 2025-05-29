@@ -6,29 +6,29 @@ const axios = require('axios');
 const path = require('path');
 
 const app = express();
+
+// ✅ Serve static files from public directory
 app.use(express.static('public'));
 app.use(cors());
 app.use(bodyParser.json());
 
+// ✅ Remove ngrok warning and log requests
 app.use((req, res, next) => {
   res.setHeader('ngrok-skip-browser-warning', 'true');
-  next();
-});
-
-app.use((req, res, next) => {
   console.log(`➡️  ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ Load environment variables
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
-const SIGNER_UUID = process.env.SIGNER_UUID;
+// ✅ Environment variables
+const { SUPABASE_URL, SUPABASE_ANON_KEY, NEYNAR_API_KEY, SIGNER_UUID, BASE_URL } = process.env;
 
-// ✅ Frame routes
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('❌ Missing Supabase environment variables');
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ✅ Frame route
 app.post('/frame', async (req, res) => {
   const { handleFrame } = await import('./frame-handler.mjs');
   handleFrame(req, res);
@@ -38,30 +38,28 @@ app.get('/frame', (req, res) => {
   res.send('🖼️ Frame endpoint is alive. Use POST from Warpcast.');
 });
 
-// ✅ Webhook handler for @infinitehomie
+// ✅ Webhook to save casts
 app.post('/webhook', async (req, res) => {
   try {
     const { type, data } = req.body;
     const text = data.text?.toLowerCase() || '';
 
-    if (
-      type !== 'cast.created' ||
-      !text.includes('@infinitehomie') ||
-      !text.includes('save this')
-    ) {
+    if (type !== 'cast.created' || !text.includes('@infinitehomie') || !text.includes('save this')) {
       return res.status(200).send('Ignored');
     }
 
     const parentHash = data.parent_hash;
     if (!parentHash) return res.status(200).send('No parent to save.');
 
-    const parentResponse = await axios.get(
+    const parentRes = await axios.get(
       `https://api.neynar.com/v2/farcaster/cast?identifier=${parentHash}&type=hash`,
-      { headers: { Accept: 'application/json', api_key: NEYNAR_API_KEY } }
+      {
+        headers: { Accept: 'application/json', api_key: NEYNAR_API_KEY },
+      }
     );
 
-    const parent = parentResponse.data.cast;
-    if (!parent) return res.status(500).send('Parent cast fetch failed.');
+    const parent = parentRes.data.cast;
+    if (!parent) return res.status(500).send('Parent cast fetch failed');
 
     const cast = {
       hash: parent.hash,
@@ -98,7 +96,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ✅ Serve saved casts
+// ✅ API route to get saved casts
 app.get('/api/saved-casts', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -113,12 +111,13 @@ app.get('/api/saved-casts', async (req, res) => {
   }
 });
 
-// 🔚 Catch-all for undefined routes
+// 🔚 Catch-all route
 app.use((req, res) => {
   res.status(404).send('Not found');
 });
 
+// ✅ Dynamic port + base URL logging
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Listening on http://localhost:${PORT}`);
+  console.log(`✅ Listening on port ${PORT}`);
 });
