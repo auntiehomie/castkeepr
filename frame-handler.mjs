@@ -5,13 +5,13 @@ export function handleFrame(req, res) {
   const frameRequest = FrameRequest.parse(req.body);
 
   const html = getFrameHtmlResponse({
-    image: 'http://localhost:3000/preview-saved-casts.png',
-    postUrl: 'http://localhost:3000/api/frame-saved-casts',
+    image: 'https://castkeepr.vercel.app/frame_image.png',
+    postUrl: 'https://castkeepr.vercel.app/api/frame-saved-casts',
     buttons: [
       {
         label: 'Open Saved Casts',
         action: 'link',
-        target: 'https://yourdomain.com',
+        target: 'https://castkeepr.vercel.app', // Update to castkeepr.xyz when ready
       },
     ],
   });
