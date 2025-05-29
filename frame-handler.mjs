@@ -1,17 +1,16 @@
-// frame-handler.mjs
 import { FrameRequest, getFrameHtmlResponse } from '@farcaster/frame-sdk';
 
 export function handleFrame(req, res) {
   const frameRequest = FrameRequest.parse(req.body);
 
   const html = getFrameHtmlResponse({
-    image: 'https://castkeepr.vercel.app/frame_image.png',
-    postUrl: 'https://castkeepr.vercel.app/api/frame-saved-casts',
+    image: 'https://castkeepr-backend.onrender.com/frame_image.png',
+    postUrl: 'https://castkeepr-backend.onrender.com/api/frame-saved-casts',
     buttons: [
       {
         label: 'Open Saved Casts',
         action: 'link',
-        target: 'https://castkeepr.vercel.app', // Update to castkeepr.xyz when ready
+        target: 'https://castkeepr.vercel.app', // or castkeepr.xyz when ready
       },
     ],
   });
