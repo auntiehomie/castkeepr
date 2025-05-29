@@ -6,13 +6,10 @@ const axios = require('axios');
 const path = require('path');
 
 const app = express();
-
-// Serve preview image
 app.use(express.static('public'));
 app.use(cors());
 app.use(bodyParser.json());
 
-// Bypass ngrok browser warning
 app.use((req, res, next) => {
   res.setHeader('ngrok-skip-browser-warning', 'true');
   next();
@@ -23,15 +20,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Supabase setup
+// ✅ Load environment variables
 const supabase = createClient(
-  'https://hkzloipgfhkfqjguyjaj.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhremxvaXBnZmhrZnFqZ3V5amFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTcyMDQsImV4cCI6MjA2MzU5MzIwNH0.O95qJ1IOA3YWNPARPAmx0ijjivMOPTC7ksYZ1m1lhyU'
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
 );
+const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const SIGNER_UUID = process.env.SIGNER_UUID;
 
-const NEYNAR_API_KEY = '26DCB507-A81F-4432-A77F-48542573C188';
-const SIGNER_UUID = '59dddf0f-6484-4310-a33f-d471309b7d0f';
+// ✅ Frame routes
+app.post('/frame', async (req, res) => {
+  const { handleFrame } = await import('./frame-handler.mjs');
+  handleFrame(req, res);
+});
 
+app.get('/frame', (req, res) => {
+  res.send('🖼️ Frame endpoint is alive. Use POST from Warpcast.');
+});
+
+// ✅ Webhook handler for @infinitehomie
 app.post('/webhook', async (req, res) => {
   try {
     const { type, data } = req.body;
@@ -91,6 +98,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// ✅ Serve saved casts
 app.get('/api/saved-casts', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -105,13 +113,12 @@ app.get('/api/saved-casts', async (req, res) => {
   }
 });
 
-// ✅ Frame route using ESM module dynamically
-app.post('/api/frame-saved-casts', async (req, res) => {
-  const { handleFrame } = await import('./frame-handler.mjs');
-  handleFrame(req, res);
+// 🔚 Catch-all for undefined routes
+app.use((req, res) => {
+  res.status(404).send('Not found');
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Listening on http://localhost:${PORT}`);
 });
