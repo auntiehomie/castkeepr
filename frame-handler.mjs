@@ -52,42 +52,23 @@ export function handleFrame(req, res) {
 
 async function handleDynamicFrame(req, res) {
   try {
-    // Get the page number from the frame button (default to page 1)
-    const buttonIndex = parseInt(req.body?.untrustedData?.buttonIndex) || 1;
-    let page = 1;
-    
-    // Button 1 = "View Saved Casts" (go to page 1)
-    // For navigation, we'd need a different approach - for now just show page 1
-    if (buttonIndex === 1) {
-      page = 1;
-    }
-    
-    const castsPerPage = 3;
-    const offset = (page - 1) * castsPerPage;
-
     // Fetch saved casts from database
     const { data: casts, error } = await supabase
       .from('saved_casts')
       .select('*')
       .order('timestamp', { ascending: false })
-      .range(offset, offset + castsPerPage - 1);
+      .limit(3);
 
     if (error) {
       console.error('❌ Database error:', error);
       throw new Error('Failed to fetch saved casts');
     }
 
-    // Generate image URL based on casts
-    const imageUrl = generateCastsImage(casts, page);
-    
-    // Calculate total pages
-    const { count } = await supabase
-      .from('saved_casts')
-      .select('*', { count: 'exact', head: true });
-    
-    const totalPages = Math.ceil((count || 0) / castsPerPage);
+    // Use static image for now, but show cast count in title
+    const castCount = casts?.length || 0;
+    const imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
 
-    // Create frame buttons based on available pages
+    // Create frame buttons based on available casts
     const buttons = [];
     
     if (casts && casts.length > 0) {
@@ -104,8 +85,6 @@ async function handleDynamicFrame(req, res) {
         action: 'link',
         target: 'https://castkeepr.vercel.app'
       });
-      
-      // If more than 3 casts, add "Load More" functionality could be added here
     } else {
       // No casts - just link to web app and back
       buttons.push({
@@ -133,15 +112,20 @@ async function handleDynamicFrame(req, res) {
   <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
   ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
   
-  <meta property="og:title" content="CastKeepr - Saved Casts (Page ${page})" />
-  <meta property="og:description" content="View your saved Farcaster casts" />
+  <meta property="og:title" content="CastKeepr - ${castCount} Saved Casts" />
+  <meta property="og:description" content="You have ${castCount} saved Farcaster casts" />
   <meta property="og:image" content="${imageUrl}" />
   
-  <title>CastKeepr Frame - Saved Casts</title>
+  <title>CastKeepr Frame - ${castCount} Saved Casts</title>
 </head>
 <body>
-  <h1>🏰 CastKeepr - Saved Casts</h1>
-  <p>Showing ${casts?.length || 0} saved casts</p>
+  <h1>🏰 CastKeepr</h1>
+  <p>You have ${castCount} saved casts</p>
+  ${casts && casts.length > 0 ? `
+    <ul>
+      ${casts.map(cast => `<li><strong>@${cast.author_username}:</strong> ${cast.text?.slice(0, 100)}${cast.text?.length > 100 ? '...' : ''}</li>`).join('')}
+    </ul>
+  ` : '<p>No saved casts yet. Reply "@infinitehomie save this" to any cast to get started!</p>'}
 </body>
 </html>`;
 
@@ -178,22 +162,4 @@ async function handleDynamicFrame(req, res) {
     res.setHeader('Content-Type', 'text/html');
     res.send(fallbackHtml);
   }
-}
-
-function generateCastsImage(casts, page) {
-  // For now, return a dynamic URL that will generate an image
-  const baseUrl = 'https://castkeepr.vercel.app';
-  
-  if (!casts || casts.length === 0) {
-    return `${baseUrl}/api/frame-image?type=empty`;
-  }
-  
-  // Encode cast data for image generation
-  const castsData = encodeURIComponent(JSON.stringify(casts.map(cast => ({
-    text: cast.text?.slice(0, 100) + (cast.text?.length > 100 ? '...' : ''),
-    author: cast.author_username,
-    timestamp: cast.timestamp
-  }))));
-  
-  return `${baseUrl}/api/frame-image?casts=${castsData}&page=${page}`;
 }
