@@ -28,14 +28,15 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ✅ Frame route
-app.post('/frame', async (req, res) => {
+// ✅ Frame route - handle both GET and POST
+app.get('/frame', async (req, res) => {
   const { handleFrame } = await import('./frame-handler.mjs');
   handleFrame(req, res);
 });
 
-app.get('/frame', (req, res) => {
-  res.send('🖼️ Frame endpoint is alive. Use POST from Warpcast.');
+app.post('/frame', async (req, res) => {
+  const { handleFrame } = await import('./frame-handler.mjs');
+  handleFrame(req, res);
 });
 
 // ✅ Webhook to save casts
