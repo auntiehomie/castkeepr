@@ -111,6 +111,38 @@ app.get('/api/saved-casts', async (req, res) => {
   }
 });
 
+// ✅ NEW: Frame-specific API route (matches the postUrl in your frame)
+app.post('/api/frame-saved-casts', async (req, res) => {
+  try {
+    // This handles frame button interactions
+    const { data, error } = await supabase
+      .from('saved_casts')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (error) return res.status(500).json({ error: 'Failed to fetch saved casts' });
+    
+    // For frame responses, you might want to return a new frame or redirect
+    // For now, just return the data
+    res.json(data);
+  } catch (err) {
+    console.error('❌ Frame API error:', err);
+    res.status(500).json({ error: 'Unexpected error' });
+  }
+});
+
+// ✅ Debug route to test image accessibility
+app.get('/debug/image', (req, res) => {
+  const imagePath = path.join(__dirname, 'public', 'frame_image.png');
+  console.log('🖼️ Checking image at:', imagePath);
+  res.sendFile(imagePath, (err) => {
+    if (err) {
+      console.error('❌ Image not found:', err);
+      res.status(404).send('Image not found');
+    }
+  });
+});
+
 // 🔚 Catch-all route
 app.use((req, res) => {
   res.status(404).send('Not found');
@@ -120,4 +152,5 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Listening on port ${PORT}`);
+  console.log(`🖼️ Image should be accessible at: http://localhost:${PORT}/frame_image.png`);
 });
