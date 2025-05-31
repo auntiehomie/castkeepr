@@ -1,12 +1,11 @@
-import { FrameRequest, getFrameHtmlResponse } from '@farcaster/frame-sdk';
+import { getFrameHtmlResponse } from '@farcaster/frame-sdk';
 
 export function handleFrame(req, res) {
   try {
-    const frameRequest = FrameRequest.parse(req.body);
-    console.log('📋 Frame request received:', frameRequest);
+    console.log('📋 Frame request received');
 
     const html = getFrameHtmlResponse({
-      image: 'https://castkeepr.vercel.app/frame_image.png', // ✅ Changed to Vercel
+      image: 'https://castkeepr.vercel.app/frame_image.png',
       postUrl: 'https://castkeepr-backend.onrender.com/api/frame-saved-casts',
       buttons: [
         {
@@ -25,7 +24,7 @@ export function handleFrame(req, res) {
     console.error('❌ Frame handler error:', error);
     
     const fallbackHtml = getFrameHtmlResponse({
-      image: 'https://castkeepr.vercel.app/frame_image.png', // ✅ Changed to Vercel
+      image: 'https://castkeepr.vercel.app/frame_image.png',
       postUrl: 'https://castkeepr-backend.onrender.com/api/frame-saved-casts',
       buttons: [
         {
