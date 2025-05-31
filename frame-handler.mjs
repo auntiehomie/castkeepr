@@ -12,10 +12,9 @@ export function handleFrame(req, res) {
         {
           label: 'Open Saved Casts',
           action: 'link',
-          target: 'https://castkeepr.vercel.app', // or castkeepr.xyz when ready
+          target: 'https://castkeepr.vercel.app', // ✅ Updated to live URL
         },
       ],
-      // Add additional frame metadata for better validation
       aspectRatio: '1.91:1'
     });
 
@@ -25,7 +24,6 @@ export function handleFrame(req, res) {
   } catch (error) {
     console.error('❌ Frame handler error:', error);
     
-    // Return a basic frame on error
     const fallbackHtml = getFrameHtmlResponse({
       image: 'https://castkeepr-backend.onrender.com/frame_image.png',
       postUrl: 'https://castkeepr-backend.onrender.com/api/frame-saved-casts',
@@ -33,7 +31,7 @@ export function handleFrame(req, res) {
         {
           label: 'Open Saved Casts',
           action: 'link',
-          target: 'https://castkeepr.vercel.app',
+          target: 'https://castkeepr.vercel.app', // ✅ Updated here too
         },
       ],
     });
