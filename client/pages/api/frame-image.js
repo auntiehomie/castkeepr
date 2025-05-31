@@ -3,8 +3,8 @@
 export default function handler(req, res) {
   const { casts, page, type } = req.query;
 
-  // Set headers for SVG image response
-  res.setHeader('Content-Type', 'image/svg+xml');
+  // Set headers for HTML response that renders as image
+  res.setHeader('Content-Type', 'text/html');
   res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
 
   let parsedCasts = [];
@@ -16,115 +16,134 @@ export default function handler(req, res) {
     }
   }
 
-  // Generate SVG image
-  const svg = generateCastsSVG(parsedCasts, page || 1, type === 'empty');
+  // Generate HTML page that displays as image
+  const html = generateCastsHTML(parsedCasts, page || 1, type === 'empty');
 
-  res.send(svg);
+  res.send(html);
 }
 
-function generateCastsSVG(casts, page, isEmpty) {
+function generateCastsHTML(casts, page, isEmpty) {
   const width = 955;
   const height = 500;
 
   if (isEmpty) {
     return `
-      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
-            <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#bg)"/>
-        
-        <text x="50%" y="35%" text-anchor="middle" fill="white" font-size="48" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          🏰 CastKeepr
-        </text>
-        
-        <text x="50%" y="50%" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          📭 No saved casts yet
-        </text>
-        
-        <text x="50%" y="65%" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          Reply "@infinitehomie save this" to any cast
-        </text>
-        
-        <text x="50%" y="80%" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          to start building your collection
-        </text>
-      </svg>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { 
+            margin: 0; 
+            padding: 0; 
+            width: ${width}px; 
+            height: ${height}px; 
+            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #14b8a6 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+          }
+          .title { font-size: 48px; font-weight: bold; margin-bottom: 20px; }
+          .subtitle { font-size: 24px; margin-bottom: 15px; opacity: 0.9; }
+          .instruction { font-size: 18px; margin-bottom: 10px; opacity: 0.8; }
+          .detail { font-size: 16px; opacity: 0.7; }
+        </style>
+      </head>
+      <body>
+        <div class="title">🏰 CastKeepr</div>
+        <div class="subtitle">📭 No saved casts yet</div>
+        <div class="instruction">Reply "@infinitehomie save this" to any cast</div>
+        <div class="detail">to start building your collection</div>
+      </body>
+      </html>
     `;
   }
 
   const castElements = casts.slice(0, 3).map((cast, index) => {
-    const y = 120 + (index * 120);
     const maxTextLength = 80;
     const truncatedText = cast.text && cast.text.length > maxTextLength 
       ? cast.text.slice(0, maxTextLength) + '...' 
       : cast.text || '';
 
     return `
-      <g>
-        <!-- Cast background -->
-        <rect x="40" y="${y}" width="875" height="100" rx="12" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-        
-        <!-- Author circle -->
-        <circle cx="80" cy="${y + 30}" r="16" fill="rgba(167,139,250,0.8)"/>
-        <text x="80" y="${y + 36}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          ${cast.author?.charAt(0)?.toUpperCase() || '?'}
-        </text>
-        
-        <!-- Author name -->
-        <text x="110" y="${y + 25}" fill="white" font-size="16" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          @${cast.author || 'unknown'}
-        </text>
-        
-        <!-- Cast text -->
-        <text x="110" y="${y + 50}" fill="rgba(255,255,255,0.9)" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          ${escapeXml(truncatedText)}
-        </text>
-        
-        <!-- Timestamp -->
-        <text x="880" y="${y + 25}" text-anchor="end" fill="rgba(255,255,255,0.6)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-          ${formatTimestamp(cast.timestamp)}
-        </text>
-      </g>
+      <div class="cast">
+        <div class="cast-header">
+          <div class="author-avatar">${cast.author?.charAt(0)?.toUpperCase() || '?'}</div>
+          <div class="author-info">
+            <div class="author-name">@${cast.author || 'unknown'}</div>
+          </div>
+          <div class="timestamp">${formatTimestamp(cast.timestamp)}</div>
+        </div>
+        <div class="cast-text">${escapeHtml(truncatedText)}</div>
+      </div>
     `;
   }).join('');
 
   return `
-    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
-          <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#bg)"/>
-      
-      <!-- Header -->
-      <text x="50%" y="50" text-anchor="middle" fill="white" font-size="32" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-        🏰 CastKeepr - Page ${page}
-      </text>
-      
-      <text x="50%" y="80" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-        Your saved Farcaster casts
-      </text>
-      
-      <!-- Casts -->
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { 
+          margin: 0; 
+          padding: 20px; 
+          width: ${width - 40}px; 
+          height: ${height - 40}px; 
+          background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #14b8a6 100%);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          color: white;
+          box-sizing: border-box;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .title { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        .subtitle { font-size: 18px; opacity: 0.8; }
+        .cast { 
+          background: rgba(255,255,255,0.1); 
+          border: 1px solid rgba(255,255,255,0.2); 
+          border-radius: 12px; 
+          padding: 20px; 
+          margin-bottom: 15px;
+        }
+        .cast-header { 
+          display: flex; 
+          align-items: center; 
+          margin-bottom: 10px; 
+        }
+        .author-avatar { 
+          width: 32px; 
+          height: 32px; 
+          border-radius: 50%; 
+          background: rgba(167,139,250,0.8); 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          font-weight: bold; 
+          margin-right: 15px; 
+        }
+        .author-name { font-weight: 600; }
+        .timestamp { margin-left: auto; font-size: 12px; opacity: 0.6; }
+        .cast-text { font-size: 14px; line-height: 1.4; opacity: 0.9; }
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; opacity: 0.6; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">🏰 CastKeepr - Page ${page}</div>
+        <div class="subtitle">Your saved Farcaster casts</div>
+      </div>
       ${castElements}
-      
-      <!-- Footer -->
-      <text x="50%" y="480" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
-        Showing ${casts.length} saved casts
-      </text>
-    </svg>
+      <div class="footer">Showing ${casts.length} saved casts</div>
+    </body>
+    </html>
   `;
 }
 
-function escapeXml(text) {
+function escapeHtml(text) {
   if (!text) return '';
   return text
     .replace(/&/g, '&amp;')
