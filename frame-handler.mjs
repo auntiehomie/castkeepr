@@ -64,9 +64,11 @@ async function handleDynamicFrame(req, res) {
       throw new Error('Failed to fetch saved casts');
     }
 
-    // Use static image for now, but show cast count in title
+    // Use dynamic image based on cast count
     const castCount = casts?.length || 0;
-    const imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
+    const imageUrl = casts && casts.length > 0 
+      ? `https://via.placeholder.com/955x500/8b5cf6/ffffff?text=🏰+CastKeepr+-+${castCount}+Saved+Casts`
+      : 'https://castkeepr.vercel.app/frame_image.png';
 
     // Create frame buttons based on available casts
     const buttons = [];
