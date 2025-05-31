@@ -1,199 +1,141 @@
-import { createClient } from '@supabase/supabase-js';
+// Save this as: client/pages/api/frame-image.js
 
-const { SUPABASE_URL, SUPABASE_ANON_KEY } = process.env;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export default function handler(req, res) {
+  const { casts, page, type } = req.query;
 
-export function handleFrame(req, res) {
-  try {
-    console.log('📋 Frame request received');
+  // Set headers for SVG image response
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
 
-    // Check if this is a button interaction (POST with frame data)
-    const isButtonPress = req.method === 'POST' && req.body?.untrustedData?.buttonIndex;
-    
-    if (isButtonPress) {
-      // Handle dynamic frame with saved casts
-      return handleDynamicFrame(req, res);
+  let parsedCasts = [];
+  if (casts && type !== 'empty') {
+    try {
+      parsedCasts = JSON.parse(decodeURIComponent(casts));
+    } catch (error) {
+      console.error('Error parsing casts:', error);
     }
-
-    // Default static frame (for initial load and frame validators)
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta property="fc:frame" content="vNext" />
-  <meta property="fc:frame:image" content="https://castkeepr.vercel.app/frame_image.png" />
-  <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
-  <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
-  <meta property="fc:frame:button:1" content="View Saved Casts" />
-  <meta property="fc:frame:button:1:action" content="post" />
-  <meta property="fc:frame:button:2" content="Open Web App" />
-  <meta property="fc:frame:button:2:action" content="link" />
-  <meta property="fc:frame:button:2:target" content="https://castkeepr.vercel.app" />
-  
-  <meta property="og:title" content="CastKeepr - Your Saved Casts" />
-  <meta property="og:description" content="Save and view your favorite Farcaster casts" />
-  <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
-  
-  <title>CastKeepr Frame</title>
-</head>
-<body>
-  <h1>🏰 CastKeepr</h1>
-  <p>Your saved casts frame</p>
-</body>
-</html>`;
-
-    console.log('🖼️ Generated static frame HTML');
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (error) {
-    console.error('❌ Frame handler error:', error);
-    res.status(500).send('Frame error');
   }
+
+  // Generate SVG image
+  const svg = generateCastsSVG(parsedCasts, page || 1, type === 'empty');
+
+  res.send(svg);
 }
 
-async function handleDynamicFrame(req, res) {
-  try {
-    // Get the page number from the frame button (default to page 1)
-    const buttonIndex = parseInt(req.body?.untrustedData?.buttonIndex) || 1;
-    let page = 1;
-    
-    // Button 1 = "View Saved Casts" (go to page 1)
-    // For navigation, we'd need a different approach - for now just show page 1
-    if (buttonIndex === 1) {
-      page = 1;
-    }
-    
-    const castsPerPage = 3;
-    const offset = (page - 1) * castsPerPage;
+function generateCastsSVG(casts, page, isEmpty) {
+  const width = 955;
+  const height = 500;
 
-    // Fetch saved casts from database
-    const { data: casts, error } = await supabase
-      .from('saved_casts')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .range(offset, offset + castsPerPage - 1);
-
-    if (error) {
-      console.error('❌ Database error:', error);
-      throw new Error('Failed to fetch saved casts');
-    }
-
-    // Generate image URL based on casts
-    const imageUrl = generateCastsImage(casts, page);
-    
-    // Calculate total pages
-    const { count } = await supabase
-      .from('saved_casts')
-      .select('*', { count: 'exact', head: true });
-    
-    const totalPages = Math.ceil((count || 0) / castsPerPage);
-
-    // Create frame buttons based on available pages
-    const buttons = [];
-    
-    if (casts && casts.length > 0) {
-      // Always include "Back to Main" button
-      buttons.push({
-        label: '← Back to Main',
-        action: 'post',
-        target: 'https://castkeepr-backend.onrender.com/frame'
-      });
-      
-      // "View All Online" button
-      buttons.push({
-        label: 'View All Online',
-        action: 'link',
-        target: 'https://castkeepr.vercel.app'
-      });
-      
-      // If more than 3 casts, add "Load More" functionality could be added here
-    } else {
-      // No casts - just link to web app and back
-      buttons.push({
-        label: '← Back to Main',
-        action: 'post',
-        target: 'https://castkeepr-backend.onrender.com/frame'
-      });
-      
-      buttons.push({
-        label: 'Learn How to Save',
-        action: 'link',
-        target: 'https://castkeepr.vercel.app'
-      });
-    }
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta property="fc:frame" content="vNext" />
-  <meta property="fc:frame:image" content="${imageUrl}" />
-  <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
-  <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
-  ${buttons.map((button, index) => `
-  <meta property="fc:frame:button:${index + 1}" content="${button.label}" />
-  <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
-  ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
-  
-  <meta property="og:title" content="CastKeepr - Saved Casts (Page ${page})" />
-  <meta property="og:description" content="View your saved Farcaster casts" />
-  <meta property="og:image" content="${imageUrl}" />
-  
-  <title>CastKeepr Frame - Saved Casts</title>
-</head>
-<body>
-  <h1>🏰 CastKeepr - Saved Casts</h1>
-  <p>Showing ${casts?.length || 0} saved casts</p>
-</body>
-</html>`;
-
-    console.log('🖼️ Generated dynamic frame HTML');
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (error) {
-    console.error('❌ Dynamic frame error:', error);
-    
-    // Fallback to static frame
-    const fallbackHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta property="fc:frame" content="vNext" />
-  <meta property="fc:frame:image" content="https://castkeepr.vercel.app/frame_image.png" />
-  <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
-  <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
-  <meta property="fc:frame:button:1" content="View Online" />
-  <meta property="fc:frame:button:1:action" content="link" />
-  <meta property="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
-  
-  <meta property="og:title" content="CastKeepr - Error" />
-  <meta property="og:description" content="Error loading saved casts" />
-  <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
-  
-  <title>CastKeepr Frame - Error</title>
-</head>
-<body>
-  <h1>🏰 CastKeepr - Error</h1>
-  <p>Unable to load saved casts</p>
-</body>
-</html>`;
-    
-    res.setHeader('Content-Type', 'text/html');
-    res.send(fallbackHtml);
+  if (isEmpty) {
+    return `
+      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#bg)"/>
+        
+        <text x="50%" y="35%" text-anchor="middle" fill="white" font-size="48" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          🏰 CastKeepr
+        </text>
+        
+        <text x="50%" y="50%" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          📭 No saved casts yet
+        </text>
+        
+        <text x="50%" y="65%" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          Reply "@infinitehomie save this" to any cast
+        </text>
+        
+        <text x="50%" y="80%" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          to start building your collection
+        </text>
+      </svg>
+    `;
   }
+
+  const castElements = casts.slice(0, 3).map((cast, index) => {
+    const y = 120 + (index * 120);
+    const maxTextLength = 80;
+    const truncatedText = cast.text && cast.text.length > maxTextLength 
+      ? cast.text.slice(0, maxTextLength) + '...' 
+      : cast.text || '';
+
+    return `
+      <g>
+        <!-- Cast background -->
+        <rect x="40" y="${y}" width="875" height="100" rx="12" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+        
+        <!-- Author circle -->
+        <circle cx="80" cy="${y + 30}" r="16" fill="rgba(167,139,250,0.8)"/>
+        <text x="80" y="${y + 36}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          ${cast.author?.charAt(0)?.toUpperCase() || '?'}
+        </text>
+        
+        <!-- Author name -->
+        <text x="110" y="${y + 25}" fill="white" font-size="16" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          @${cast.author || 'unknown'}
+        </text>
+        
+        <!-- Cast text -->
+        <text x="110" y="${y + 50}" fill="rgba(255,255,255,0.9)" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          ${escapeXml(truncatedText)}
+        </text>
+        
+        <!-- Timestamp -->
+        <text x="880" y="${y + 25}" text-anchor="end" fill="rgba(255,255,255,0.6)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+          ${formatTimestamp(cast.timestamp)}
+        </text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+          <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#bg)"/>
+      
+      <!-- Header -->
+      <text x="50%" y="50" text-anchor="middle" fill="white" font-size="32" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+        🏰 CastKeepr - Page ${page}
+      </text>
+      
+      <text x="50%" y="80" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+        Your saved Farcaster casts
+      </text>
+      
+      <!-- Casts -->
+      ${castElements}
+      
+      <!-- Footer -->
+      <text x="50%" y="480" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+        Showing ${casts.length} saved casts
+      </text>
+    </svg>
+  `;
 }
 
-function generateCastsImage(casts, page) {
-  // For now, return a dynamic URL that will generate an image
-  const baseUrl = 'https://castkeepr.vercel.app';
-  
-  if (!casts || casts.length === 0) {
-    return `${baseUrl}/api/frame-image?type=empty`;
-  }
-  
-  // Encode cast data for image generation
-  const castsData = encodeURIComponent(JSON.stringify(casts.map(cast => ({
-    text: cast.text?.slice(0, 100) + (cast.text?.length > 100 ? '...' : ''),
-    author: cast.author_username,
-    timestamp: cast.timestamp
-  }))));
-  
-  return `${baseUrl}/api/frame-image?casts=${castsData}&page=${page}`;
+function escapeXml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatTimestamp(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
