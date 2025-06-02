@@ -52,10 +52,22 @@ export function handleFrame(req, res) {
 
 async function handleDynamicFrame(req, res) {
   try {
-    // Fetch saved casts from database
+    // Get the user's FID from the frame request
+    const userFid = req.body?.untrustedData?.fid;
+    
+    console.log('🔍 User FID from frame request:', userFid);
+
+    if (!userFid) {
+      console.log('❌ No user FID found in request');
+      // Fallback to static frame if we can't identify the user
+      return res.redirect('/frame');
+    }
+
+    // Fetch saved casts for this specific user
     const { data: casts, error } = await supabase
       .from('saved_casts')
       .select('*')
+      .eq('author_fid', userFid) // Only show casts saved by this user
       .order('timestamp', { ascending: false })
       .limit(3);
 
@@ -63,6 +75,8 @@ async function handleDynamicFrame(req, res) {
       console.error('❌ Database error:', error);
       throw new Error('Failed to fetch saved casts');
     }
+
+    console.log(`📊 Found ${casts?.length || 0} saved casts for user ${userFid}`);
 
     // Use different image based on cast count
     const castCount = casts?.length || 0;
@@ -114,15 +128,15 @@ async function handleDynamicFrame(req, res) {
   <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
   ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
   
-  <meta property="og:title" content="CastKeepr - ${castCount} Saved Casts Found!" />
-  <meta property="og:description" content="Found ${castCount} saved casts: ${casts && casts.length > 0 ? casts.map(c => '@' + c.author_username).slice(0,3).join(', ') : 'none'}" />
+  <meta property="og:title" content="CastKeepr - Your ${castCount} Saved Casts" />
+  <meta property="og:description" content="Personal saved casts for FID ${userFid}: ${casts && casts.length > 0 ? casts.map(c => '@' + c.author_username).slice(0,3).join(', ') : 'none yet'}" />
   <meta property="og:image" content="${imageUrl}" />
   
-  <title>CastKeepr Frame - ${castCount} Saved Casts</title>
+  <title>CastKeepr Frame - Your ${castCount} Saved Casts</title>
 </head>
 <body>
-  <h1>🏰 CastKeepr</h1>
-  <p>You have ${castCount} saved casts</p>
+  <h1>🏰 CastKeepr - Your Personal Saved Casts</h1>
+  <p>You (FID: ${userFid}) have ${castCount} saved casts</p>
   ${casts && casts.length > 0 ? `
     <ul>
       ${casts.map(cast => `<li><strong>@${cast.author_username}:</strong> ${cast.text?.slice(0, 100)}${cast.text?.length > 100 ? '...' : ''}</li>`).join('')}
