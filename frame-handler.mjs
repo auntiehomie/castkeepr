@@ -54,8 +54,10 @@ async function handleDynamicFrame(req, res) {
   try {
     // Get the user's FID from the frame request
     const userFid = req.body?.untrustedData?.fid;
+    const buttonIndex = parseInt(req.body?.untrustedData?.buttonIndex) || 1;
     
     console.log('🔍 User FID from frame request:', userFid);
+    console.log('🔘 Button pressed:', buttonIndex);
 
     if (!userFid) {
       console.log('❌ No user FID found in request');
@@ -63,46 +65,111 @@ async function handleDynamicFrame(req, res) {
       return res.redirect('/frame');
     }
 
-    // Fetch saved casts for this specific user
+    // Determine current page based on button press and state
+    let currentPage = 1;
+    
+    // Parse page from button context (we'll store it in the URL)
+    const currentPageFromUrl = parseInt(req.query?.page) || 1;
+    
+    // Button logic for pagination
+    if (buttonIndex === 1 && req.body?.untrustedData?.state?.includes('page:')) {
+      // Previous button pressed
+      const pageMatch = req.body.untrustedData.state.match(/page:(\d+)/);
+      const statePage = pageMatch ? parseInt(pageMatch[1]) : 1;
+      currentPage = Math.max(1, statePage - 1);
+    } else if (buttonIndex === 2 && req.body?.untrustedData?.state?.includes('page:')) {
+      // Next button pressed
+      const pageMatch = req.body.untrustedData.state.match(/page:(\d+)/);
+      const statePage = pageMatch ? parseInt(pageMatch[1]) : 1;
+      currentPage = statePage + 1;
+    } else if (buttonIndex === 1) {
+      // First time clicking "View Saved Casts"
+      currentPage = 1;
+    }
+
+    console.log('📄 Current page:', currentPage);
+
+    // Get total count first
+    const { count, error: countError } = await supabase
+      .from('saved_casts')
+      .select('*', { count: 'exact', head: true })
+      .eq('author_fid', userFid);
+
+    if (countError) {
+      console.error('❌ Count error:', countError);
+      throw new Error('Failed to count saved casts');
+    }
+
+    const totalCasts = count || 0;
+    const totalPages = Math.max(1, totalCasts);
+
+    // Ensure current page doesn't exceed total
+    currentPage = Math.min(currentPage, totalPages);
+
+    // Fetch the specific cast for this page (one cast per page)
     const { data: casts, error } = await supabase
       .from('saved_casts')
       .select('*')
-      .eq('author_fid', userFid) // Only show casts saved by this user
+      .eq('author_fid', userFid)
       .order('timestamp', { ascending: false })
-      .limit(3);
+      .range(currentPage - 1, currentPage - 1); // Get just one cast
 
     if (error) {
       console.error('❌ Database error:', error);
       throw new Error('Failed to fetch saved casts');
     }
 
-    console.log(`📊 Found ${casts?.length || 0} saved casts for user ${userFid}`);
+    console.log(`📊 Found ${totalCasts} total saved casts for user ${userFid}, showing page ${currentPage}`);
 
-    // Use different image based on cast count
-    const castCount = casts?.length || 0;
-    
-    // For now, let's just use the static image but change the title/description to show the count
-    const imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
+    const currentCast = casts?.[0];
 
-    // Create frame buttons based on available casts
+    // Generate a simple text-based image URL showing the current cast
+    let imageUrl;
+    if (currentCast) {
+      const castText = encodeURIComponent(currentCast.text?.slice(0, 60) || 'No text');
+      const author = encodeURIComponent(currentCast.author_username || 'Unknown');
+      imageUrl = `https://via.placeholder.com/955x500/8b5cf6/ffffff?text=Cast+${currentPage}+of+${totalCasts}%0A@${author}%0A${castText}`;
+    } else {
+      imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
+    }
+
+    // Create navigation buttons
     const buttons = [];
     
-    if (casts && casts.length > 0) {
-      // Always include "Back to Main" button
-      buttons.push({
-        label: '← Back to Main',
-        action: 'post',
-        target: 'https://castkeepr-backend.onrender.com/frame'
-      });
+    if (totalCasts > 0) {
+      // Previous button (if not on first page)
+      if (currentPage > 1) {
+        buttons.push({
+          label: '← Previous',
+          action: 'post',
+          target: `https://castkeepr-backend.onrender.com/frame?page=${currentPage}`
+        });
+      }
       
-      // "View All Online" button
+      // Next button (if not on last page)
+      if (currentPage < totalPages) {
+        buttons.push({
+          label: 'Next →',
+          action: 'post',
+          target: `https://castkeepr-backend.onrender.com/frame?page=${currentPage}`
+        });
+      }
+      
+      // Always include "View All Online" button
       buttons.push({
         label: 'View All Online',
         action: 'link',
         target: 'https://castkeepr.vercel.app'
       });
+      
+      // Back to main button
+      buttons.push({
+        label: '← Back to Main',
+        action: 'post',
+        target: 'https://castkeepr-backend.onrender.com/frame'
+      });
     } else {
-      // No casts - just link to web app and back
+      // No casts - just navigation buttons
       buttons.push({
         label: '← Back to Main',
         action: 'post',
@@ -116,6 +183,11 @@ async function handleDynamicFrame(req, res) {
       });
     }
 
+    // Truncate buttons to max 4
+    const finalButtons = buttons.slice(0, 4);
+
+    const frameState = `page:${currentPage}`;
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -123,24 +195,27 @@ async function handleDynamicFrame(req, res) {
   <meta property="fc:frame:image" content="${imageUrl}" />
   <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
   <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
-  ${buttons.map((button, index) => `
+  <meta property="fc:frame:state" content="${frameState}" />
+  ${finalButtons.map((button, index) => `
   <meta property="fc:frame:button:${index + 1}" content="${button.label}" />
   <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
   ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
   
-  <meta property="og:title" content="CastKeepr - Your ${castCount} Saved Casts" />
-  <meta property="og:description" content="Personal saved casts for FID ${userFid}: ${casts && casts.length > 0 ? casts.map(c => '@' + c.author_username).slice(0,3).join(', ') : 'none yet'}" />
+  <meta property="og:title" content="CastKeepr - Cast ${currentPage} of ${totalCasts}" />
+  <meta property="og:description" content="${currentCast ? `@${currentCast.author_username}: ${currentCast.text?.slice(0, 100)}` : 'No saved casts yet'}" />
   <meta property="og:image" content="${imageUrl}" />
   
-  <title>CastKeepr Frame - Your ${castCount} Saved Casts</title>
+  <title>CastKeepr - Cast ${currentPage} of ${totalCasts}</title>
 </head>
 <body>
-  <h1>🏰 CastKeepr - Your Personal Saved Casts</h1>
-  <p>You (FID: ${userFid}) have ${castCount} saved casts</p>
-  ${casts && casts.length > 0 ? `
-    <ul>
-      ${casts.map(cast => `<li><strong>@${cast.author_username}:</strong> ${cast.text?.slice(0, 100)}${cast.text?.length > 100 ? '...' : ''}</li>`).join('')}
-    </ul>
+  <h1>🏰 CastKeepr - Your Saved Casts</h1>
+  <p>Cast ${currentPage} of ${totalCasts} for FID ${userFid}</p>
+  ${currentCast ? `
+    <div>
+      <h3>@${currentCast.author_username}</h3>
+      <p>${currentCast.text}</p>
+      <small>Saved: ${new Date(currentCast.timestamp).toLocaleDateString()}</small>
+    </div>
   ` : '<p>No saved casts yet. Reply "@infinitehomie save this" to any cast to get started!</p>'}
 </body>
 </html>`;
