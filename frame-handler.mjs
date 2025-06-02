@@ -64,11 +64,11 @@ async function handleDynamicFrame(req, res) {
       throw new Error('Failed to fetch saved casts');
     }
 
-    // Use dynamic image based on cast count
+    // Use different image based on cast count
     const castCount = casts?.length || 0;
-    const imageUrl = casts && casts.length > 0 
-      ? `https://via.placeholder.com/955x500/8b5cf6/ffffff?text=🏰+CastKeepr+-+${castCount}+Saved+Casts`
-      : 'https://castkeepr.vercel.app/frame_image.png';
+    
+    // For now, let's just use the static image but change the title/description to show the count
+    const imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
 
     // Create frame buttons based on available casts
     const buttons = [];
@@ -114,8 +114,8 @@ async function handleDynamicFrame(req, res) {
   <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
   ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
   
-  <meta property="og:title" content="CastKeepr - ${castCount} Saved Casts" />
-  <meta property="og:description" content="You have ${castCount} saved Farcaster casts" />
+  <meta property="og:title" content="CastKeepr - ${castCount} Saved Casts Found!" />
+  <meta property="og:description" content="Found ${castCount} saved casts: ${casts && casts.length > 0 ? casts.map(c => '@' + c.author_username).slice(0,3).join(', ') : 'none'}" />
   <meta property="og:image" content="${imageUrl}" />
   
   <title>CastKeepr Frame - ${castCount} Saved Casts</title>
