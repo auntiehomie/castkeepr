@@ -61,29 +61,32 @@ async function handleDynamicFrame(req, res) {
 
     if (!userFid) {
       console.log('❌ No user FID found in request');
-      // Fallback to static frame if we can't identify the user
-      return res.redirect('/frame');
+      return handleStaticFrame(req, res);
     }
 
-    // Determine current page based on button press and state
+    // Parse current page from frame state
     let currentPage = 1;
-    
-    // Parse page from button context (we'll store it in the URL)
-    const currentPageFromUrl = parseInt(req.query?.page) || 1;
-    
-    // Button logic for pagination
-    if (buttonIndex === 1 && req.body?.untrustedData?.state?.includes('page:')) {
-      // Previous button pressed
-      const pageMatch = req.body.untrustedData.state.match(/page:(\d+)/);
-      const statePage = pageMatch ? parseInt(pageMatch[1]) : 1;
-      currentPage = Math.max(1, statePage - 1);
-    } else if (buttonIndex === 2 && req.body?.untrustedData?.state?.includes('page:')) {
-      // Next button pressed
-      const pageMatch = req.body.untrustedData.state.match(/page:(\d+)/);
-      const statePage = pageMatch ? parseInt(pageMatch[1]) : 1;
-      currentPage = statePage + 1;
-    } else if (buttonIndex === 1) {
-      // First time clicking "View Saved Casts"
+    try {
+      const frameState = req.body?.untrustedData?.state;
+      if (frameState && frameState.includes('page:')) {
+        const pageMatch = frameState.match(/page:(\d+)/);
+        if (pageMatch) {
+          const statePage = parseInt(pageMatch[1]);
+          
+          // Handle button navigation
+          if (buttonIndex === 1) { // Previous
+            currentPage = Math.max(1, statePage - 1);
+          } else if (buttonIndex === 2) { // Next
+            currentPage = statePage + 1;
+          } else if (buttonIndex === 4) { // Back to Main
+            return handleStaticFrame(req, res);
+          } else {
+            currentPage = statePage;
+          }
+        }
+      }
+    } catch (err) {
+      console.log('State parsing error:', err);
       currentPage = 1;
     }
 
@@ -101,90 +104,91 @@ async function handleDynamicFrame(req, res) {
     }
 
     const totalCasts = count || 0;
-    const totalPages = Math.max(1, totalCasts);
+
+    if (totalCasts === 0) {
+      // No casts for this user
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta property="fc:frame" content="vNext" />
+  <meta property="fc:frame:image" content="https://castkeepr.vercel.app/frame_image.png" />
+  <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
+  <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
+  <meta property="fc:frame:button:1" content="← Back to Main" />
+  <meta property="fc:frame:button:1:action" content="post" />
+  <meta property="fc:frame:button:2" content="Learn How to Save" />
+  <meta property="fc:frame:button:2:action" content="link" />
+  <meta property="fc:frame:button:2:target" content="https://castkeepr.vercel.app" />
+  
+  <meta property="og:title" content="CastKeepr - No Saved Casts Yet" />
+  <meta property="og:description" content="You haven't saved any casts yet. Reply '@infinitehomie save this' to any cast!" />
+  <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
+  
+  <title>CastKeepr - No Saved Casts</title>
+</head>
+<body>
+  <h1>🏰 CastKeepr</h1>
+  <p>No saved casts yet for FID ${userFid}</p>
+</body>
+</html>`;
+      
+      res.setHeader('Content-Type', 'text/html');
+      return res.send(html);
+    }
 
     // Ensure current page doesn't exceed total
-    currentPage = Math.min(currentPage, totalPages);
+    currentPage = Math.min(Math.max(1, currentPage), totalCasts);
 
-    // Fetch the specific cast for this page (one cast per page)
+    // Fetch the specific cast for this page
     const { data: casts, error } = await supabase
       .from('saved_casts')
       .select('*')
       .eq('author_fid', userFid)
       .order('timestamp', { ascending: false })
-      .range(currentPage - 1, currentPage - 1); // Get just one cast
+      .range(currentPage - 1, currentPage - 1);
 
     if (error) {
       console.error('❌ Database error:', error);
       throw new Error('Failed to fetch saved casts');
     }
 
-    console.log(`📊 Found ${totalCasts} total saved casts for user ${userFid}, showing page ${currentPage}`);
-
     const currentCast = casts?.[0];
+    console.log(`📊 Showing cast ${currentPage} of ${totalCasts} for user ${userFid}`);
 
-    // Generate a simple text-based image URL showing the current cast
-    let imageUrl;
-    if (currentCast) {
-      const castText = encodeURIComponent(currentCast.text?.slice(0, 60) || 'No text');
-      const author = encodeURIComponent(currentCast.author_username || 'Unknown');
-      imageUrl = `https://via.placeholder.com/955x500/8b5cf6/ffffff?text=Cast+${currentPage}+of+${totalCasts}%0A@${author}%0A${castText}`;
-    } else {
-      imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
-    }
+    // Use reliable static image for now
+    const imageUrl = 'https://castkeepr.vercel.app/frame_image.png';
 
     // Create navigation buttons
     const buttons = [];
     
-    if (totalCasts > 0) {
-      // Previous button (if not on first page)
-      if (currentPage > 1) {
-        buttons.push({
-          label: '← Previous',
-          action: 'post',
-          target: `https://castkeepr-backend.onrender.com/frame?page=${currentPage}`
-        });
-      }
-      
-      // Next button (if not on last page)
-      if (currentPage < totalPages) {
-        buttons.push({
-          label: 'Next →',
-          action: 'post',
-          target: `https://castkeepr-backend.onrender.com/frame?page=${currentPage}`
-        });
-      }
-      
-      // Always include "View All Online" button
+    // Previous button (if not on first page)
+    if (currentPage > 1) {
       buttons.push({
-        label: 'View All Online',
-        action: 'link',
-        target: 'https://castkeepr.vercel.app'
-      });
-      
-      // Back to main button
-      buttons.push({
-        label: '← Back to Main',
-        action: 'post',
-        target: 'https://castkeepr-backend.onrender.com/frame'
-      });
-    } else {
-      // No casts - just navigation buttons
-      buttons.push({
-        label: '← Back to Main',
-        action: 'post',
-        target: 'https://castkeepr-backend.onrender.com/frame'
-      });
-      
-      buttons.push({
-        label: 'Learn How to Save',
-        action: 'link',
-        target: 'https://castkeepr.vercel.app'
+        label: '← Previous',
+        action: 'post'
       });
     }
-
-    // Truncate buttons to max 4
-    const finalButtons = buttons.slice(0, 4);
+    
+    // Next button (if not on last page)
+    if (currentPage < totalCasts) {
+      buttons.push({
+        label: 'Next →',
+        action: 'post'
+      });
+    }
+    
+    // View All Online button
+    buttons.push({
+      label: 'View All...',
+      action: 'link',
+      target: 'https://castkeepr.vercel.app'
+    });
+    
+    // Back to main button
+    buttons.push({
+      label: '← Back to Main',
+      action: 'post'
+    });
 
     const frameState = `page:${currentPage}`;
 
@@ -196,61 +200,67 @@ async function handleDynamicFrame(req, res) {
   <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
   <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
   <meta property="fc:frame:state" content="${frameState}" />
-  ${finalButtons.map((button, index) => `
+  ${buttons.map((button, index) => `
   <meta property="fc:frame:button:${index + 1}" content="${button.label}" />
   <meta property="fc:frame:button:${index + 1}:action" content="${button.action}" />
   ${button.target ? `<meta property="fc:frame:button:${index + 1}:target" content="${button.target}" />` : ''}`).join('')}
   
   <meta property="og:title" content="CastKeepr - Cast ${currentPage} of ${totalCasts}" />
-  <meta property="og:description" content="${currentCast ? `@${currentCast.author_username}: ${currentCast.text?.slice(0, 100)}` : 'No saved casts yet'}" />
+  <meta property="og:description" content="${currentCast ? `@${currentCast.author_username}: ${currentCast.text?.slice(0, 100)}` : 'Loading cast...'}" />
   <meta property="og:image" content="${imageUrl}" />
   
   <title>CastKeepr - Cast ${currentPage} of ${totalCasts}</title>
 </head>
 <body>
-  <h1>🏰 CastKeepr - Your Saved Casts</h1>
-  <p>Cast ${currentPage} of ${totalCasts} for FID ${userFid}</p>
+  <h1>🏰 CastKeepr - Cast ${currentPage} of ${totalCasts}</h1>
   ${currentCast ? `
     <div>
       <h3>@${currentCast.author_username}</h3>
       <p>${currentCast.text}</p>
       <small>Saved: ${new Date(currentCast.timestamp).toLocaleDateString()}</small>
+      <br><small>Hash: ${currentCast.hash?.slice(0, 10)}...</small>
     </div>
-  ` : '<p>No saved casts yet. Reply "@infinitehomie save this" to any cast to get started!</p>'}
+  ` : '<p>Loading cast...</p>'}
 </body>
 </html>`;
 
-    console.log('🖼️ Generated dynamic frame HTML');
+    console.log('🖼️ Generated paginated frame HTML');
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
     console.error('❌ Dynamic frame error:', error);
-    
-    // Fallback to static frame
-    const fallbackHtml = `<!DOCTYPE html>
+    return handleStaticFrame(req, res);
+  }
+}
+
+// Helper function to return to static frame
+function handleStaticFrame(req, res) {
+  const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta property="fc:frame" content="vNext" />
   <meta property="fc:frame:image" content="https://castkeepr.vercel.app/frame_image.png" />
   <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
   <meta property="fc:frame:post_url" content="https://castkeepr-backend.onrender.com/frame" />
-  <meta property="fc:frame:button:1" content="View Online" />
-  <meta property="fc:frame:button:1:action" content="link" />
-  <meta property="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
+  <meta property="fc:frame:button:1" content="View Saved Casts" />
+  <meta property="fc:frame:button:1:action" content="post" />
+  <meta property="fc:frame:button:2" content="Open Web App" />
+  <meta property="fc:frame:button:2:action" content="link" />
+  <meta property="fc:frame:button:2:target" content="https://castkeepr.vercel.app" />
   
-  <meta property="og:title" content="CastKeepr - Error" />
-  <meta property="og:description" content="Error loading saved casts" />
+  <meta property="og:title" content="CastKeepr - Your Saved Casts" />
+  <meta property="og:description" content="Save and view your favorite Farcaster casts" />
   <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
   
-  <title>CastKeepr Frame - Error</title>
+  <title>CastKeepr Frame</title>
 </head>
 <body>
-  <h1>🏰 CastKeepr - Error</h1>
-  <p>Unable to load saved casts</p>
+  <h1>🏰 CastKeepr</h1>
+  <p>Your saved casts frame</p>
 </body>
 </html>`;
-    
-    res.setHeader('Content-Type', 'text/html');
-    res.send(fallbackHtml);
-  }
+
+  console.log('🖼️ Generated static frame HTML');
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 }
