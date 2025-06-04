@@ -7,42 +7,148 @@ const SavedCasts = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [userFid, setUserFid] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   // Initialize Farcaster SDK
   useEffect(() => {
-    // Check if we're in a Farcaster Mini App context
-    if (window.parent !== window) {
-      // We're in an iframe/Mini App
-      initializeFarcasterSDK();
-    } else {
-      // Fallback for testing - use a default FID or show all casts
-      console.log('Not in Mini App context - showing all casts');
-      setIsConnected(true);
-    }
+    const initializeApp = async () => {
+      console.log('🚀 Initializing CastKeepr Mini App...');
+      
+      // Check if we're in a Farcaster Mini App context
+      if (window.parent !== window) {
+        console.log('📱 Running in Mini App context');
+        await initializeFarcasterSDK();
+      } else {
+        console.log('🌐 Running in browser context - using fallback');
+        setIsConnected(true);
+        // Signal ready immediately for browser testing
+        signalReady();
+      }
+    };
+
+    initializeApp();
   }, []);
+
+  const signalReady = () => {
+    console.log('✅ Signaling app is ready');
+    setIsReady(true);
+    
+    // Signal to Farcaster that the app is ready
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'fc_ready'
+      }, '*');
+    }
+  };
 
   const initializeFarcasterSDK = async () => {
     try {
-      // Request user info from Farcaster
-      window.parent.postMessage({
-        type: 'fc_request',
-        method: 'fc_user'
-      }, '*');
+      console.log('🔗 Connecting to Farcaster...');
       
-      // Listen for Farcaster responses
-      window.addEventListener('message', (event) => {
-        if (event.data.type === 'fc_response' && event.data.method === 'fc_user') {
-          if (event.data.result) {
-            console.log('Farcaster user detected:', event.data.result);
-            setUserFid(event.data.result.fid);
-            setIsConnected(true);
+      // Listen for ALL Farcaster messages
+      const messageHandler = (event) => {
+        console.log('📨 Received message from parent:', event.data);
+        
+        // Handle different message types
+        if (event.data.type === 'fc_frame' || event.data.type === 'frameContext') {
+          console.log('🖼️ Frame context received:', event.data);
+          if (event.data.user || event.data.untrustedData) {
+            const fid = event.data.user?.fid || event.data.untrustedData?.fid;
+            if (fid) {
+              console.log('👤 User FID from frame context:', fid);
+              setUserFid(fid);
+              setIsConnected(true);
+              signalReady();
+              return;
+            }
           }
         }
-      });
+        
+        if (event.data.type === 'fc_response') {
+          console.log('✅ Farcaster API response:', event.data);
+          if (event.data.method === 'fc_user' && event.data.result) {
+            console.log('👤 Farcaster user detected:', event.data.result);
+            setUserFid(event.data.result.fid);
+            setIsConnected(true);
+            signalReady();
+            return;
+          }
+        }
+        
+        // Handle Mini App specific context
+        if (event.data.type === 'miniapp_context' || event.data.context) {
+          console.log('🏠 Mini App context:', event.data);
+          const fid = event.data.context?.user?.fid || event.data.user?.fid;
+          if (fid) {
+            console.log('👤 User FID from Mini App context:', fid);
+            setUserFid(fid);
+            setIsConnected(true);
+            signalReady();
+            return;
+          }
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+      
+      // Try multiple methods to get user info
+      setTimeout(() => {
+        console.log('📤 Method 1: Requesting fc_user...');
+        window.parent.postMessage({
+          type: 'fc_request',
+          method: 'fc_user'
+        }, '*');
+      }, 100);
+      
+      setTimeout(() => {
+        console.log('📤 Method 2: Requesting fc_context...');
+        window.parent.postMessage({
+          type: 'fc_request',
+          method: 'fc_context'
+        }, '*');
+      }, 200);
+      
+      setTimeout(() => {
+        console.log('📤 Method 3: Requesting miniapp_ready...');
+        window.parent.postMessage({
+          type: 'miniapp_ready'
+        }, '*');
+      }, 300);
+      
+      setTimeout(() => {
+        console.log('📤 Method 4: Requesting frame context...');
+        window.parent.postMessage({
+          type: 'frame_request',
+          method: 'context'
+        }, '*');
+      }, 400);
+      
+      // Extended timeout fallback
+      setTimeout(() => {
+        if (!isConnected) {
+          console.log('⏱️ Extended timeout - checking for any user context...');
+          
+          // Try to get FID from URL parameters (sometimes passed this way)
+          const urlParams = new URLSearchParams(window.location.search);
+          const fidFromUrl = urlParams.get('fid') || urlParams.get('user_fid');
+          
+          if (fidFromUrl) {
+            console.log('🔗 Found FID in URL parameters:', fidFromUrl);
+            setUserFid(parseInt(fidFromUrl));
+            setIsConnected(true);
+            signalReady();
+          } else {
+            console.log('❓ No user context found - proceeding with demo mode');
+            setIsConnected(true);
+            signalReady();
+          }
+        }
+      }, 5000);
+      
     } catch (error) {
-      console.error('Failed to initialize Farcaster SDK:', error);
-      // Fallback to showing all casts
+      console.error('❌ Failed to initialize Farcaster SDK:', error);
       setIsConnected(true);
+      signalReady();
     }
   };
 
@@ -85,6 +191,19 @@ const SavedCasts = () => {
     });
   };
 
+  // Manual FID input for fallback
+  const [manualFid, setManualFid] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+
+  const handleManualFidSubmit = (e) => {
+    e.preventDefault();
+    const fid = parseInt(manualFid);
+    if (fid && fid > 0) {
+      console.log('✅ Manual FID entered:', fid);
+      setUserFid(fid);
+      setShowManualInput(false);
+    }
+  };
   // Handle cast actions
   const handleCastAction = async (cast, action) => {
     try {
@@ -108,6 +227,19 @@ const SavedCasts = () => {
       console.error('Cast action failed:', error);
     }
   };
+
+  // Show loading screen until app is ready
+  if (!isReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-4">🏰 CastKeepr</h1>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white/80">Initializing Mini App...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Connection screen
   if (!isConnected) {
@@ -169,8 +301,36 @@ const SavedCasts = () => {
         <div className="text-center py-8">
           <h1 className="text-4xl font-bold text-white mb-2">🏰 CastKeepr</h1>
           <p className="text-white/80 text-lg">Your saved Farcaster casts</p>
-          {userFid && (
+          {userFid ? (
             <p className="text-white/60 text-sm">Connected as FID: {userFid}</p>
+          ) : (
+            <div className="mt-4">
+              <p className="text-white/60 text-sm mb-2">No user detected</p>
+              {!showManualInput ? (
+                <button
+                  onClick={() => setShowManualInput(true)}
+                  className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  Enter Your FID
+                </button>
+              ) : (
+                <form onSubmit={handleManualFidSubmit} className="flex items-center justify-center space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Your FID"
+                    value={manualFid}
+                    onChange={(e) => setManualFid(e.target.value)}
+                    className="px-3 py-1 bg-white/10 border border-white/20 rounded text-white placeholder-white/60 text-sm w-24"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded text-sm transition-colors"
+                  >
+                    Connect
+                  </button>
+                </form>
+              )}
+            </div>
           )}
         </div>
 
