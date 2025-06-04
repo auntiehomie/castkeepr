@@ -1,13 +1,7 @@
 {
-  "accountAssociation": {
-    "header": "eyJmaWQiOjMxMDMsInR5cGUiOiJjdXN0b2R5IiwiYXNzb2NpYXRpb24iOiJkb21haW4ifQ",
-    "payload": "eyJkb21haW4iOiJjYXN0a2VlcHIudmVyY2VsLmFwcCJ9",
-    "signature": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12"
-  },
-  "appUrl": "https://castkeepr.vercel.app",
   "version": "1",
   "name": "CastKeepr",
-  "description": "Save and organize your favorite Farcaster casts with @infinitehomie",
+  "description": "Save and organize your favorite Farcaster casts",
   "homeUrl": "https://castkeepr.vercel.app",
   "imageUrl": "https://castkeepr.vercel.app/icon.png",
   "buttonTitle": "Open CastKeepr",
