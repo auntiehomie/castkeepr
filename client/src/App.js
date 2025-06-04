@@ -1,20 +1,13 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Menu from './components/Menu';
 import SavedCasts from './components/SavedCasts';
-import About from './components/About';
-import Donate from './components/Donate';
 
 function App() {
+  console.log('🚀 App component rendering...');
+  
   return (
-    <Router>
-      <Menu />
-      <Routes>
-        <Route path="/" element={<SavedCasts />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/donate" element={<Donate />} />
-      </Routes>
-    </Router>
+    <div className="App">
+      <SavedCasts />
+    </div>
   );
 }
 
