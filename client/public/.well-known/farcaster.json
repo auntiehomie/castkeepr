@@ -1,0 +1,15 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMxMDMsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg5MTkzYjkzN2VkMzA0ZjlkNWZlZTc4M2JjMGQ3NjczODk0MTU3YzZkIn0",
+    "signature": "MHhkZGY3NWYxYmU3MWJiOGRjN2E5NGM5YjE0ZjZkMzMwNjFhMjFhM2RkYjI1MzYxMzYxMmI5OTM3YWI4ZWZhZTU3MTY3ZTRlNGEyMzQ1ZjIzZmE4YjZjNTM4NjNkZTRkYTE3NGEzNWE2ZWM1YWY4NzFkMmY0ODA5NTc5M2Q5MDFj",
+    "payload": "eyJkb21haW4iOiJjYXN0a2VlcHIudmVyY2VsLmFwcCJ9"
+  },
+  "app": {
+    "name": "CastKeepr",
+    "version": "1.0.0",
+    "iconUrl": "https://castkeepr.vercel.app/logo512.png",
+    "splashImageUrl": "https://castkeepr.vercel.app/frame_image.png",
+    "splashBackgroundColor": "#8b5cf6",
+    "homeUrl": "https://castkeepr.vercel.app"
+  }
+}
