@@ -9,7 +9,20 @@ const app = express();
 
 // ✅ Serve static files from public directory
 app.use(express.static('public'));
-app.use(cors());
+
+// ✅ Updated CORS for Mini App compatibility
+app.use(cors({
+  origin: [
+    'https://castkeepr.vercel.app',
+    'https://warpcast.com',
+    'https://client.warpcast.com',
+    /\.farcaster\.xyz$/,
+    /\.warpcast\.com$/,
+    'http://localhost:3000' // For local development
+  ],
+  credentials: true
+}));
+
 app.use(bodyParser.json());
 
 // ✅ Remove ngrok warning and log requests
@@ -97,22 +110,69 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// ✅ API route to get saved casts
+// ✅ API route to get saved casts (updated for Mini App)
 app.get('/api/saved-casts', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { fid } = req.query;
+    console.log('🔍 API request for saved casts, FID:', fid);
+    
+    let query = supabase
       .from('saved_casts')
       .select('*')
       .order('timestamp', { ascending: false });
-
-    if (error) return res.status(500).json({ error: 'Failed to fetch saved casts' });
-    res.json(data);
+    
+    // Filter by FID if provided (for personal saved casts)
+    if (fid) {
+      query = query.eq('author_fid', parseInt(fid));
+      console.log('🎯 Filtering by FID:', fid);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('❌ Database error:', error);
+      return res.status(500).json({ error: 'Failed to fetch saved casts' });
+    }
+    
+    console.log(`📊 Returning ${data?.length || 0} saved casts`);
+    res.json(data || []);
   } catch (err) {
+    console.error('❌ API error:', err);
     res.status(500).json({ error: 'Unexpected error' });
   }
 });
 
-// ✅ NEW: Frame-specific API route (matches the postUrl in your frame)
+// ✅ NEW: API route for Mini App user info
+app.get('/api/user-info', async (req, res) => {
+  try {
+    const { fid } = req.query;
+    
+    if (!fid) {
+      return res.status(400).json({ error: 'FID required' });
+    }
+    
+    // Get count of saved casts for this user
+    const { count, error } = await supabase
+      .from('saved_casts')
+      .select('*', { count: 'exact', head: true })
+      .eq('author_fid', parseInt(fid));
+    
+    if (error) {
+      console.error('❌ User info error:', error);
+      return res.status(500).json({ error: 'Failed to fetch user info' });
+    }
+    
+    res.json({
+      fid: parseInt(fid),
+      savedCastsCount: count || 0
+    });
+  } catch (err) {
+    console.error('❌ User info error:', err);
+    res.status(500).json({ error: 'Unexpected error' });
+  }
+});
+
+// ✅ Frame-specific API route (matches the postUrl in your frame)
 app.post('/api/frame-saved-casts', async (req, res) => {
   try {
     // This handles frame button interactions
@@ -154,4 +214,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Listening on port ${PORT}`);
   console.log(`🖼️ Image should be accessible at: http://localhost:${PORT}/frame_image.png`);
+  console.log(`🏰 Mini App ready at: https://castkeepr-backend.onrender.com`);
 });
