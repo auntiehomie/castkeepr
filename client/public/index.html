@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#8b5cf6" />
     <meta name="description" content="CastKeepr - Save and manage your favorite Farcaster casts" />
     
     <!-- Open Graph / Farcaster Frame metadata -->
@@ -12,16 +12,67 @@
     <meta property="og:description" content="Save and view your favorite Farcaster casts in one place" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://castkeepr.vercel.app" />
-    <meta property="og:image" content="https://castkeepr-backend.onrender.com/frame_image.png" />
+    <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
     
     <!-- Twitter Card metadata -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="CastKeepr - Your Saved Casts" />
     <meta name="twitter:description" content="Save and view your favorite Farcaster casts in one place" />
-    <meta name="twitter:image" content="https://castkeepr-backend.onrender.com/frame_image.png" />
+    <meta name="twitter:image" content="https://castkeepr.vercel.app/frame_image.png" />
+    
+    <!-- Farcaster Mini App metadata -->
+    <meta name="fc:frame" content="vNext" />
+    <meta name="fc:frame:button:1" content="Open Mini App" />
+    <meta name="fc:frame:button:1:action" content="link" />
+    <meta name="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
     
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Debug logging for Mini App -->
+    <script>
+      // Debug logging for Mini App
+      console.log('🏰 CastKeepr Mini App Starting...');
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🖼️ In iframe:', window.parent !== window);
+      console.log('🌐 Current URL:', window.location.href);
+      console.log('📋 Referrer:', document.referrer);
+      
+      // Listen to all postMessage events for debugging
+      window.addEventListener('message', (event) => {
+        console.log('🔍 Debug - Message received:', {
+          origin: event.origin,
+          data: event.data,
+          source: event.source === window.parent ? 'parent' : 'other'
+        });
+      });
+      
+      // Signal that the page is loaded
+      window.addEventListener('load', () => {
+        console.log('📄 Page loaded, DOM ready');
+      });
+      
+      // Additional Mini App debugging
+      window.addEventListener('DOMContentLoaded', () => {
+        console.log('🔧 DOM Content Loaded');
+        
+        // Check if we're in Mini App context
+        if (window.parent !== window) {
+          console.log('📱 Running in Mini App iframe');
+          
+          // Try to get initial context from parent
+          setTimeout(() => {
+            console.log('📤 Requesting initial context...');
+            window.parent.postMessage({
+              type: 'fc_request',
+              method: 'fc_context'
+            }, '*');
+          }, 500);
+        } else {
+          console.log('🌐 Running in standalone browser');
+        }
+      });
+    </script>
     
     <title>CastKeepr - Your Saved Casts</title>
   </head>
@@ -29,10 +80,11 @@
     <noscript>You need to enable JavaScript to run CastKeepr.</noscript>
     <div id="root"></div>
     
-    <!-- Loading fallback -->
+    <!-- Enhanced loading fallback -->
     <script>
       // Simple loading indicator while React loads
       if (!window.React) {
+        console.log('⚛️ React not loaded yet, showing fallback');
         document.getElementById('root').innerHTML = `
           <div style="
             display: flex; 
@@ -40,13 +92,16 @@
             align-items: center; 
             height: 100vh; 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #14b8a6 100%);
             color: white;
             text-align: center;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
           ">
             <div>
-              <h1 style="margin-bottom: 20px; font-size: 2.5rem;">🏰 CastKeepr</h1>
-              <p style="font-size: 1.2rem; opacity: 0.9;">Loading your saved casts...</p>
+              <h1 style="margin-bottom: 20px; font-size: 2.5rem; font-weight: bold;">🏰 CastKeepr</h1>
+              <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 20px;">Loading your saved casts...</p>
               <div style="
                 width: 40px; 
                 height: 40px; 
@@ -56,9 +111,13 @@
                 animation: spin 1s linear infinite;
                 margin: 20px auto;
               "></div>
+              <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 20px;">
+                ${window.parent !== window ? 'Mini App Mode' : 'Browser Mode'}
+              </p>
             </div>
           </div>
           <style>
+            body { margin: 0; padding: 0; }
             @keyframes spin {
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
@@ -66,6 +125,20 @@
           </style>
         `;
       }
+    </script>
+    
+    <!-- Mini App ready signal fallback -->
+    <script>
+      // Backup ready signal in case React doesn't load quickly
+      setTimeout(() => {
+        if (window.parent !== window && !window.fcReadySignalSent) {
+          console.log('⏰ Timeout fallback - sending ready signal');
+          window.parent.postMessage({
+            type: 'fc_ready'
+          }, '*');
+          window.fcReadySignalSent = true;
+        }
+      }, 5000);
     </script>
   </body>
 </html>
