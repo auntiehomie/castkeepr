@@ -41,15 +41,115 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ✅ Frame route - handle both GET and POST
+// ✅ Simple embed frame route for validation
+app.get('/embed', (req, res) => {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Farcaster Frame metadata -->
+    <meta property="fc:frame" content="vNext" />
+    <meta property="fc:frame:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta property="fc:frame:image:aspect_ratio" content="1:1" />
+    <meta property="fc:frame:button:1" content="Open CastKeepr" />
+    <meta property="fc:frame:button:1:action" content="link" />
+    <meta property="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
+    
+    <!-- Open Graph metadata -->
+    <meta property="og:title" content="CastKeepr - Your Farcaster Cast Vault" />
+    <meta property="og:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
+    <meta property="og:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta property="og:url" content="https://castkeepr.vercel.app" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Twitter Card metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CastKeepr - Your Farcaster Cast Vault" />
+    <meta name="twitter:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
+    <meta name="twitter:image" content="https://castkeepr.vercel.app/icon.png" />
+    
+    <title>CastKeepr - Your Farcaster Cast Vault</title>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        .button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏰 CastKeepr</h1>
+        <p class="subtitle">Your personal Farcaster cast vault</p>
+        <p>Save and organize your favorite Farcaster casts with @infinitehomie</p>
+        <br>
+        <a href="https://castkeepr.vercel.app" class="button">Open CastKeepr Mini App</a>
+    </div>
+</body>
+</html>`;
+  
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
+// ✅ Frame route - handle both GET and POST (keep existing)
 app.get('/frame', async (req, res) => {
-  const { handleFrame } = await import('./frame-handler.mjs');
-  handleFrame(req, res);
+  try {
+    const { handleFrame } = await import('./frame-handler.mjs');
+    handleFrame(req, res);
+  } catch (error) {
+    console.error('❌ Frame handler error:', error);
+    // Fallback if frame-handler.mjs doesn't exist
+    res.redirect('/embed');
+  }
 });
 
 app.post('/frame', async (req, res) => {
-  const { handleFrame } = await import('./frame-handler.mjs');
-  handleFrame(req, res);
+  try {
+    const { handleFrame } = await import('./frame-handler.mjs');
+    handleFrame(req, res);
+  } catch (error) {
+    console.error('❌ Frame handler error:', error);
+    res.status(500).json({ error: 'Frame handler not available' });
+  }
 });
 
 // ✅ Webhook to save casts
@@ -215,4 +315,5 @@ app.listen(PORT, () => {
   console.log(`✅ Listening on port ${PORT}`);
   console.log(`🖼️ Image should be accessible at: http://localhost:${PORT}/frame_image.png`);
   console.log(`🏰 Mini App ready at: https://castkeepr-backend.onrender.com`);
+  console.log(`🔗 Embed frame available at: https://castkeepr-backend.onrender.com/embed`);
 });
