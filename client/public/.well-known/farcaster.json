@@ -8,6 +8,7 @@
   "name": "CastKeepr",
   "description": "Save and organize your favorite Farcaster casts with @infinitehomie",
   "homeUrl": "https://castkeepr.vercel.app",
+  "appUrl": "https://castkeepr.vercel.app",
   "imageUrl": "https://castkeepr.vercel.app/icon.png",
   "buttonTitle": "Open CastKeepr",
   "splashImageUrl": "https://castkeepr.vercel.app/splash.png",
