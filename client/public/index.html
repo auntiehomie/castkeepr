@@ -1,148 +1,74 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#764ba2" />
-    <meta name="description" content="CastKeepr - Save and manage your favorite Farcaster casts" />
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <!-- Open Graph / Farcaster Frame metadata -->
-    <meta property="og:title" content="CastKeepr - Your Farcaster Cast Vault" />
-    <meta property="og:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://castkeepr.vercel.app" />
-    <meta property="og:image" content="https://castkeepr.vercel.app/icon.png" />
-    <meta property="og:site_name" content="CastKeepr" />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
-    
-    <!-- Twitter Card metadata -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CastKeepr - Your Farcaster Cast Vault" />
-    <meta name="twitter:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
-    <meta name="twitter:image" content="https://castkeepr.vercel.app/icon.png" />
-    <meta name="twitter:site" content="@infinitehomie" />
-    
-    <!-- Farcaster Frame metadata (FIXED: using property instead of name) -->
+    <!-- Farcaster Frame metadata -->
     <meta property="fc:frame" content="vNext" />
     <meta property="fc:frame:image" content="https://castkeepr.vercel.app/icon.png" />
-    <meta property="fc:frame:image:aspect_ratio" content="1:1" />
     <meta property="fc:frame:button:1" content="Open CastKeepr" />
     <meta property="fc:frame:button:1:action" content="link" />
     <meta property="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
     
-    <!-- Additional meta tags for better embed validation -->
-    <meta name="robots" content="index, follow" />
-    <meta name="author" content="infinitehomie" />
-    <meta name="keywords" content="Farcaster, casts, save, organize, social media, web3" />
+    <!-- Open Graph metadata -->
+    <meta property="og:title" content="CastKeepr - Your Farcaster Cast Vault" />
+    <meta property="og:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
+    <meta property="og:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta property="og:url" content="https://castkeepr.vercel.app" />
+    <meta property="og:type" content="website" />
     
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>CastKeepr Frame</title>
     
-    <!-- Debug logging for Mini App -->
-    <script>
-      console.log('🏰 CastKeepr Mini App Starting...');
-      console.log('📱 User Agent:', navigator.userAgent);
-      console.log('🖼️ In iframe:', window.parent !== window);
-      console.log('🌐 Current URL:', window.location.href);
-      console.log('📋 Referrer:', document.referrer);
-      
-      window.addEventListener('message', (event) => {
-        console.log('🔍 Debug - Message received:', {
-          origin: event.origin,
-          data: event.data,
-          source: event.source === window.parent ? 'parent' : 'other'
-        });
-      });
-      
-      window.addEventListener('load', () => {
-        console.log('📄 Page loaded, DOM ready');
-      });
-      
-      window.addEventListener('DOMContentLoaded', () => {
-        console.log('🔧 DOM Content Loaded');
-        
-        if (window.parent !== window) {
-          console.log('📱 Running in Mini App iframe');
-          
-          setTimeout(() => {
-            console.log('📤 Requesting initial context...');
-            window.parent.postMessage({
-              type: 'fc_request',
-              method: 'fc_context'
-            }, '*');
-          }, 500);
-        } else {
-          console.log('🌐 Running in standalone browser');
-        }
-      });
-    </script>
-    
-    <title>CastKeepr - Your Farcaster Cast Vault</title>
-  </head>
-  
-  <body>
-    <noscript>You need to enable JavaScript to run CastKeepr.</noscript>
-    <div id="root"></div>
-    
-    <!-- Enhanced loading fallback -->
-    <script>
-      if (!window.React) {
-        console.log('⚛️ React not loaded yet, showing fallback');
-        document.getElementById('root').innerHTML = `
-          <div style="
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             color: white;
             text-align: center;
+            padding: 2rem;
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-          ">
-            <div>
-              <h1 style="margin-bottom: 20px; font-size: 2.5rem; font-weight: bold;">🏰 CastKeepr</h1>
-              <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 20px;">Loading your saved casts...</p>
-              <div style="
-                width: 40px; 
-                height: 40px; 
-                border: 3px solid rgba(255,255,255,0.3); 
-                border-top: 3px solid white; 
-                border-radius: 50%; 
-                animation: spin 1s linear infinite;
-                margin: 20px auto;
-              "></div>
-              <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 20px;">
-                ${window.parent !== window ? 'Mini App Mode' : 'Browser Mode'}
-              </p>
-            </div>
-          </div>
-          <style>
-            body { margin: 0; padding: 0; }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-        `;
-      }
-    </script>
-    
-    <!-- Mini App ready signal fallback -->
-    <script>
-      setTimeout(() => {
-        if (window.parent !== window && !window.fcReadySignalSent) {
-          console.log('⏰ Timeout fallback - sending ready signal');
-          window.parent.postMessage({
-            type: 'fc_ready'
-          }, '*');
-          window.fcReadySignalSent = true;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-      }, 5000);
-    </script>
-  </body>
+        .container {
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        .button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏰 CastKeepr</h1>
+        <p class="subtitle">Your personal Farcaster cast vault</p>
+        <p>Save and organize your favorite Farcaster casts with @infinitehomie</p>
+        <br>
+        <a href="https://castkeepr.vercel.app" class="button">Open CastKeepr Mini App</a>
+    </div>
+</body>
 </html>
