@@ -4,32 +4,40 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#8b5cf6" />
+    <meta name="theme-color" content="#764ba2" />
     <meta name="description" content="CastKeepr - Save and manage your favorite Farcaster casts" />
     
     <!-- Open Graph / Farcaster Frame metadata -->
-    <meta property="og:title" content="CastKeepr - Your Saved Casts" />
-    <meta property="og:description" content="Save and view your favorite Farcaster casts in one place" />
+    <meta property="og:title" content="CastKeepr - Your Farcaster Cast Vault" />
+    <meta property="og:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://castkeepr.vercel.app" />
-    <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
-    
-    <!-- Farcaster Mini App auto-discovery -->
-    <meta property="og:see_also" content="https://castkeepr.vercel.app/api/manifest.json" />
+    <meta property="og:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta property="og:site_name" content="CastKeepr" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
     
     <!-- Twitter Card metadata -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CastKeepr - Your Saved Casts" />
-    <meta name="twitter:description" content="Save and view your favorite Farcaster casts in one place" />
-    <meta name="twitter:image" content="https://castkeepr.vercel.app/frame_image.png" />
+    <meta name="twitter:title" content="CastKeepr - Your Farcaster Cast Vault" />
+    <meta name="twitter:description" content="Save and organize your favorite Farcaster casts with @infinitehomie" />
+    <meta name="twitter:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta name="twitter:site" content="@infinitehomie" />
     
-    <!-- Farcaster Mini App metadata -->
+    <!-- Farcaster Frame metadata -->
     <meta name="fc:frame" content="vNext" />
-    <meta name="fc:frame:button:1" content="Open Mini App" />
+    <meta name="fc:frame:image" content="https://castkeepr.vercel.app/icon.png" />
+    <meta name="fc:frame:image:aspect_ratio" content="1:1" />
+    <meta name="fc:frame:button:1" content="Open CastKeepr" />
     <meta name="fc:frame:button:1:action" content="link" />
     <meta name="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
     
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!-- Additional meta tags for better embed validation -->
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="infinitehomie" />
+    <meta name="keywords" content="Farcaster, casts, save, organize, social media, web3" />
+    
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
     <!-- Debug logging for Mini App -->
@@ -71,7 +79,7 @@
       });
     </script>
     
-    <title>CastKeepr - Your Saved Casts</title>
+    <title>CastKeepr - Your Farcaster Cast Vault</title>
   </head>
   
   <body>
@@ -89,7 +97,7 @@
             align-items: center; 
             height: 100vh; 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #14b8a6 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             color: white;
             text-align: center;
             margin: 0;
