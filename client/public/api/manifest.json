@@ -1,18 +1,13 @@
 {
-"accountAssociation": {
-"header": "eyJmaWQiOjMxMDMsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg0ODkzOUVCMWU3RGJlNzU5NjRCM0IyMDhlODY2OGEzRjE5NjVhYjY5In0",
-"payload": "eyJkb21haW4iOiJjYXN0a2VlcHIudmVyY2VsLmFwcCJ9",
-"signature": "MHhjMmI0MTgyMzI0YzYyZjFkYjE4ZTlkNjkyYTc3MzRlYWMyYTg3ODRjMmRkMGM3MDQzNDI1N2ZhYTc4YmZlZGY2NjQzOGExMjQwMTkwNTg3MjBlMzVkOTg4ZTM0ODE4ZWQzZDJlYTg2ZjU4ZDEwNzE0MzhjZGRmMDcwZTJkYTM0NjFi"
-},
-"frame": {
-"version": "1",
-"name": "Castkeepr",
-"iconUrl": "https://castkeepr.vercel.app/icon.png",
-"homeUrl": "https://castkeepr.vercel.app",
-"imageUrl": "https://castkeepr.vercel.app/image.png",
-"buttonTitle": "Check this out",
-"splashImageUrl": "https://castkeepr.vercel.app/splash.png",
-"splashBackgroundColor": "#eeccff",
-"webhookUrl": "https://castkeepr.vercel.app/api/webhook"
-}
+  "id": "castkeepr",
+  "name": "CastKeepr",
+  "description": "Save and organize your favorite Farcaster casts with @infinitehomie",
+  "icon": "https://castkeepr.vercel.app/icon.png",
+  "developer": {
+    "name": "Auntie Homie",
+    "url": "https://castkeepr.xyz"
+  },
+  "app": {
+    "url": "https://castkeepr.vercel.app"
+  }
 }
