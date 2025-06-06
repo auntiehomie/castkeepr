@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
@@ -13,6 +11,9 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://castkeepr.vercel.app" />
     <meta property="og:image" content="https://castkeepr.vercel.app/frame_image.png" />
+    
+    <!-- ADD THIS LINE for Mini App auto-discovery -->
+    <meta property="og:see_also" content="https://castkeepr.vercel.app/api/manifest.json" />
     
     <!-- Twitter Card metadata -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -28,117 +29,3 @@
     
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    
-    <!-- Debug logging for Mini App -->
-    <script>
-      // Debug logging for Mini App
-      console.log('🏰 CastKeepr Mini App Starting...');
-      console.log('📱 User Agent:', navigator.userAgent);
-      console.log('🖼️ In iframe:', window.parent !== window);
-      console.log('🌐 Current URL:', window.location.href);
-      console.log('📋 Referrer:', document.referrer);
-      
-      // Listen to all postMessage events for debugging
-      window.addEventListener('message', (event) => {
-        console.log('🔍 Debug - Message received:', {
-          origin: event.origin,
-          data: event.data,
-          source: event.source === window.parent ? 'parent' : 'other'
-        });
-      });
-      
-      // Signal that the page is loaded
-      window.addEventListener('load', () => {
-        console.log('📄 Page loaded, DOM ready');
-      });
-      
-      // Additional Mini App debugging
-      window.addEventListener('DOMContentLoaded', () => {
-        console.log('🔧 DOM Content Loaded');
-        
-        // Check if we're in Mini App context
-        if (window.parent !== window) {
-          console.log('📱 Running in Mini App iframe');
-          
-          // Try to get initial context from parent
-          setTimeout(() => {
-            console.log('📤 Requesting initial context...');
-            window.parent.postMessage({
-              type: 'fc_request',
-              method: 'fc_context'
-            }, '*');
-          }, 500);
-        } else {
-          console.log('🌐 Running in standalone browser');
-        }
-      });
-    </script>
-    
-    <title>CastKeepr - Your Saved Casts</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run CastKeepr.</noscript>
-    <div id="root"></div>
-    
-    <!-- Enhanced loading fallback -->
-    <script>
-      // Simple loading indicator while React loads
-      if (!window.React) {
-        console.log('⚛️ React not loaded yet, showing fallback');
-        document.getElementById('root').innerHTML = `
-          <div style="
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 50%, #14b8a6 100%);
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-          ">
-            <div>
-              <h1 style="margin-bottom: 20px; font-size: 2.5rem; font-weight: bold;">🏰 CastKeepr</h1>
-              <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 20px;">Loading your saved casts...</p>
-              <div style="
-                width: 40px; 
-                height: 40px; 
-                border: 3px solid rgba(255,255,255,0.3); 
-                border-top: 3px solid white; 
-                border-radius: 50%; 
-                animation: spin 1s linear infinite;
-                margin: 20px auto;
-              "></div>
-              <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 20px;">
-                ${window.parent !== window ? 'Mini App Mode' : 'Browser Mode'}
-              </p>
-            </div>
-          </div>
-          <style>
-            body { margin: 0; padding: 0; }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-        `;
-      }
-    </script>
-    
-    <!-- Mini App ready signal fallback -->
-    <script>
-      // Backup ready signal in case React doesn't load quickly
-      setTimeout(() => {
-        if (window.parent !== window && !window.fcReadySignalSent) {
-          console.log('⏰ Timeout fallback - sending ready signal');
-          window.parent.postMessage({
-            type: 'fc_ready'
-          }, '*');
-          window.fcReadySignalSent = true;
-        }
-      }, 5000);
-    </script>
-  </body>
-</html>
