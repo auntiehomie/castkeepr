@@ -9,7 +9,7 @@
     "name": "CastKeepr",
     "iconUrl": "https://castkeepr.vercel.app/icon.png",
     "homeUrl": "https://castkeepr.vercel.app",
-    "imageUrl": "https://castkeepr.vercel.app/icon.png",
+    "imageUrl": "https://castkeepr.vercel.app/frame_image.png",
     "buttonTitle": "Open CastKeepr",
     "splashImageUrl": "https://castkeepr.vercel.app/splash.png",
     "splashBackgroundColor": "#764ba2",
