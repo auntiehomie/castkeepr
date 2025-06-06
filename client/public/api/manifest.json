@@ -1,0 +1,13 @@
+{
+  "id": "castkeepr",
+  "name": "CastKeepr",
+  "description": "Save and organize your favorite Farcaster casts with @infinitehomie",
+  "icon": "https://castkeepr.vercel.app/icon.png",
+  "developer": {
+    "name": "Auntie Homie",
+    "url": "https://castkeepr.xyz"
+  },
+  "app": {
+    "url": "https://castkeepr.vercel.app"
+  }
+}

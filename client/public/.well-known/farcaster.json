@@ -1,16 +1,8 @@
 {
-  "accountAssociation": {
+  "version": "1",
+  "account_association": {
     "header": "eyJmaWQiOjMxMDMsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg0ODkzOUVCMWU3RGJlNzU5NjRCM0IyMDhlODY2OGEzRjE5NjVhYjY5In0",
     "payload": "eyJkb21haW4iOiJjYXN0a2VlcHIudmVyY2VsLmFwcCJ9",
     "signature": "MHhjMmI0MTgyMzI0YzYyZjFkYjE4ZTlkNjkyYTc3MzRlYWMyYTg3ODRjMmRkMGM3MDQzNDI1N2ZhYTc4YmZlZGY2NjQzOGExMjQwMTkwNTg3MjBlMzVkOTg4ZTM0ODE4ZWQzZDJlYTg2ZjU4ZDEwNzE0MzhjZGRmMDcwZTJkYTM0NjFi"
-  },
-  "version": "1",
-  "name": "CastKeepr",
-  "description": "Save and organize your favorite Farcaster casts with @infinitehomie",
-  "homeUrl": "https://castkeepr.vercel.app",
-  "appUrl": "https://castkeepr.vercel.app",
-  "imageUrl": "https://castkeepr.vercel.app/icon.png",
-  "buttonTitle": "Open CastKeepr",
-  "splashImageUrl": "https://castkeepr.vercel.app/splash.png",
-  "splashBackgroundColor": "#764ba2"
+  }
 }
