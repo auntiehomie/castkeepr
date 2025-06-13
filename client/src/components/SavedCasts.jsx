@@ -71,19 +71,19 @@ const SavedCasts = () => {
       
       window.addEventListener('message', messageHandler);
       
-      // Single request for context
+      // Multiple context requests with different formats
       setTimeout(() => {
         console.log('📤 Requesting Farcaster context...');
-        window.parent.postMessage({ 
-          type: 'fc_request', 
-          method: 'fc_context' 
-        }, '*');
+        // Try multiple message formats
+        window.parent.postMessage({ type: 'fc_request', method: 'fc_context' }, '*');
+        window.parent.postMessage({ type: 'fc_ready' }, '*');
+        window.parent.postMessage({ type: 'miniapp_ready' }, '*');
       }, 100);
       
-      // Fallback timeout
+      // Fallback timeout - reduced to 2 seconds and force connection
       setTimeout(() => {
         if (!isConnected) {
-          console.log('⏱️ Timeout - checking URL parameters...');
+          console.log('⏱️ Timeout - forcing connection...');
           
           // Try to get FID from URL parameters
           const urlParams = new URLSearchParams(window.location.search);
@@ -92,15 +92,14 @@ const SavedCasts = () => {
           if (fidFromUrl) {
             console.log('🔗 Found FID in URL:', fidFromUrl);
             setUserFid(parseInt(fidFromUrl));
-            setIsConnected(true);
-            signalReady();
-          } else {
-            console.log('❓ No user context found - proceeding with demo mode');
-            setIsConnected(true);
-            signalReady();
           }
+          
+          // Force connection even without FID for mini app context
+          console.log('🔄 Forcing connection to proceed...');
+          setIsConnected(true);
+          signalReady();
         }
-      }, 3000);
+      }, 2000);
       
       // Return cleanup function
       return () => {
@@ -203,6 +202,24 @@ const SavedCasts = () => {
           <h1 className="text-4xl font-bold text-white mb-4">🏰 CastKeepr</h1>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-white/80">Initializing Mini App...</p>
+          
+          {/* Debug info */}
+          <div className="mt-4 text-white/60 text-xs">
+            <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
+            <p>Ready: {isReady ? 'Yes' : 'No'}</p>
+            <p>Context: {window.parent !== window ? 'Mini App' : 'Browser'}</p>
+          </div>
+          
+          {/* Emergency skip button after 5 seconds */}
+          <button 
+            onClick={() => {
+              setIsConnected(true);
+              signalReady();
+            }}
+            className="mt-4 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm transition-colors"
+          >
+            Skip to App
+          </button>
         </div>
       </div>
     );
