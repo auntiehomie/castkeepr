@@ -17,16 +17,23 @@ const SavedCasts = () => {
       // Check if we're in a Farcaster Mini App context
       if (window.parent !== window) {
         console.log('📱 Running in Mini App context');
-        await initializeFarcasterSDK();
+        const cleanup = await initializeFarcasterSDK();
+        return cleanup;
       } else {
         console.log('🌐 Running in browser context - using fallback');
         setIsConnected(true);
-        // Signal ready immediately for browser testing
         signalReady();
+        return null;
       }
     };
 
-    initializeApp();
+    let cleanup;
+    initializeApp().then(fn => cleanup = fn);
+    
+    // Cleanup function
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   const signalReady = () => {
@@ -45,95 +52,45 @@ const SavedCasts = () => {
     try {
       console.log('🔗 Connecting to Farcaster...');
       
-      // Listen for ALL Farcaster messages
       const messageHandler = (event) => {
-        console.log('📨 Received message from parent:', event.data);
+        console.log('📨 Received message:', event.data);
         
-        // Handle different message types
-        if (event.data.type === 'fc_frame' || event.data.type === 'frameContext') {
-          console.log('🖼️ Frame context received:', event.data);
-          if (event.data.user || event.data.untrustedData) {
-            const fid = event.data.user?.fid || event.data.untrustedData?.fid;
-            if (fid) {
-              console.log('👤 User FID from frame context:', fid);
-              setUserFid(fid);
-              setIsConnected(true);
-              signalReady();
-              return;
-            }
-          }
-        }
+        // Look for user FID in any common format
+        const fid = event.data?.user?.fid || 
+                    event.data?.untrustedData?.fid || 
+                    event.data?.context?.user?.fid ||
+                    event.data?.result?.fid;
         
-        if (event.data.type === 'fc_response') {
-          console.log('✅ Farcaster API response:', event.data);
-          if (event.data.method === 'fc_user' && event.data.result) {
-            console.log('👤 Farcaster user detected:', event.data.result);
-            setUserFid(event.data.result.fid);
-            setIsConnected(true);
-            signalReady();
-            return;
-          }
-        }
-        
-        // Handle Mini App specific context
-        if (event.data.type === 'miniapp_context' || event.data.context) {
-          console.log('🏠 Mini App context:', event.data);
-          const fid = event.data.context?.user?.fid || event.data.user?.fid;
-          if (fid) {
-            console.log('👤 User FID from Mini App context:', fid);
-            setUserFid(fid);
-            setIsConnected(true);
-            signalReady();
-            return;
-          }
+        if (fid && !userFid) {
+          console.log('👤 Found FID:', fid);
+          setUserFid(fid);
+          setIsConnected(true);
+          signalReady();
         }
       };
       
       window.addEventListener('message', messageHandler);
       
-      // Try multiple methods to get user info
+      // Single request for context
       setTimeout(() => {
-        console.log('📤 Method 1: Requesting fc_user...');
-        window.parent.postMessage({
-          type: 'fc_request',
-          method: 'fc_user'
+        console.log('📤 Requesting Farcaster context...');
+        window.parent.postMessage({ 
+          type: 'fc_request', 
+          method: 'fc_context' 
         }, '*');
       }, 100);
       
-      setTimeout(() => {
-        console.log('📤 Method 2: Requesting fc_context...');
-        window.parent.postMessage({
-          type: 'fc_request',
-          method: 'fc_context'
-        }, '*');
-      }, 200);
-      
-      setTimeout(() => {
-        console.log('📤 Method 3: Requesting miniapp_ready...');
-        window.parent.postMessage({
-          type: 'miniapp_ready'
-        }, '*');
-      }, 300);
-      
-      setTimeout(() => {
-        console.log('📤 Method 4: Requesting frame context...');
-        window.parent.postMessage({
-          type: 'frame_request',
-          method: 'context'
-        }, '*');
-      }, 400);
-      
-      // Extended timeout fallback
+      // Fallback timeout
       setTimeout(() => {
         if (!isConnected) {
-          console.log('⏱️ Extended timeout - checking for any user context...');
+          console.log('⏱️ Timeout - checking URL parameters...');
           
-          // Try to get FID from URL parameters (sometimes passed this way)
+          // Try to get FID from URL parameters
           const urlParams = new URLSearchParams(window.location.search);
           const fidFromUrl = urlParams.get('fid') || urlParams.get('user_fid');
           
           if (fidFromUrl) {
-            console.log('🔗 Found FID in URL parameters:', fidFromUrl);
+            console.log('🔗 Found FID in URL:', fidFromUrl);
             setUserFid(parseInt(fidFromUrl));
             setIsConnected(true);
             signalReady();
@@ -143,27 +100,33 @@ const SavedCasts = () => {
             signalReady();
           }
         }
-      }, 5000);
+      }, 3000);
+      
+      // Return cleanup function
+      return () => {
+        window.removeEventListener('message', messageHandler);
+      };
       
     } catch (error) {
       console.error('❌ Failed to initialize Farcaster SDK:', error);
       setIsConnected(true);
       signalReady();
+      return null;
     }
   };
 
-  // UPDATED: Secure API URL - only fetch with valid FID
+  // API URL - only fetch with valid FID
   const apiUrl = userFid 
     ? `https://castkeepr-backend.onrender.com/api/saved-casts?fid=${userFid}`
-    : null; // Don't make any API call without userFid
+    : null;
 
   const { data, error, isLoading, mutate } = useSWR(
-    apiUrl, // Will be null until userFid is set
+    apiUrl,
     fetcher,
     { 
-      refreshInterval: 30000, // Increased to 30 seconds
+      refreshInterval: 30000,
       revalidateOnFocus: true,
-      revalidateOnMount: !!apiUrl, // Only fetch if we have a valid API URL
+      revalidateOnMount: !!apiUrl,
       onError: (error) => {
         console.error('❌ SWR fetch error:', error);
       },
@@ -173,9 +136,8 @@ const SavedCasts = () => {
     }
   );
 
-  // UPDATED: Remove filtering logic since backend now handles user isolation
+  // Filter casts based on search term
   const filteredCasts = data?.filter(cast => {
-    // Apply only search filter - user filtering is now handled by backend
     const matchesSearch = !searchTerm || (
       cast.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cast.author_username?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -246,26 +208,7 @@ const SavedCasts = () => {
     );
   }
 
-  // Connection screen
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-20">
-            <h1 className="text-4xl font-bold text-white mb-4">🏰 CastKeepr</h1>
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 max-w-md mx-auto">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-white/90 mb-4">
-                Connecting to Farcaster...
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // UPDATED: Show message when connected but no user detected
+  // Show message when connected but no user detected
   if (isConnected && !userFid) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4">
@@ -326,7 +269,7 @@ const SavedCasts = () => {
     );
   }
 
-  // Error state - with better error messages
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4">
@@ -389,7 +332,7 @@ const SavedCasts = () => {
           </div>
         )}
 
-        {/* No casts message - updated for user-specific context */}
+        {/* No casts message */}
         {filteredCasts.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">📭</div>
