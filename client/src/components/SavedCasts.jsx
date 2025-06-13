@@ -14,13 +14,20 @@ const SavedCasts = () => {
     const initializeApp = async () => {
       console.log('🚀 Initializing CastKeepr Mini App...');
       
-      // Check if we're in a Farcaster Mini App context
-      if (window.parent !== window) {
-        console.log('📱 Running in Mini App context');
-        const cleanup = await initializeFarcasterSDK();
-        return cleanup;
-      } else {
-        console.log('🌐 Running in browser context - using fallback');
+      try {
+        // Check if we're in a Farcaster Mini App context
+        if (window.parent !== window) {
+          console.log('📱 Running in Mini App context');
+          const cleanup = await initializeFarcasterSDK();
+          return cleanup;
+        } else {
+          console.log('🌐 Running in browser context - using fallback');
+          setIsConnected(true);
+          signalReady();
+          return null;
+        }
+      } catch (initError) {
+        console.error('Error in initializeApp:', initError);
         setIsConnected(true);
         signalReady();
         return null;
@@ -28,11 +35,23 @@ const SavedCasts = () => {
     };
 
     let cleanup;
-    initializeApp().then(fn => cleanup = fn);
+    initializeApp()
+      .then(fn => cleanup = fn)
+      .catch(err => {
+        console.error('Promise error in initializeApp:', err);
+        setIsConnected(true);
+        signalReady();
+      });
     
     // Cleanup function
     return () => {
-      if (cleanup) cleanup();
+      if (cleanup) {
+        try {
+          cleanup();
+        } catch (cleanupError) {
+          console.error('Error during cleanup:', cleanupError);
+        }
+      }
     };
   }, []);
 
@@ -55,17 +74,21 @@ const SavedCasts = () => {
       const messageHandler = (event) => {
         console.log('📨 Received message:', event.data);
         
-        // Look for user FID in any common format
-        const fid = event.data?.user?.fid || 
-                    event.data?.untrustedData?.fid || 
-                    event.data?.context?.user?.fid ||
-                    event.data?.result?.fid;
-        
-        if (fid && !userFid) {
-          console.log('👤 Found FID:', fid);
-          setUserFid(fid);
-          setIsConnected(true);
-          signalReady();
+        try {
+          // Look for user FID in any common format
+          const fid = event.data?.user?.fid || 
+                      event.data?.untrustedData?.fid || 
+                      event.data?.context?.user?.fid ||
+                      event.data?.result?.fid;
+          
+          if (fid && !userFid) {
+            console.log('👤 Found FID:', fid);
+            setUserFid(fid);
+            setIsConnected(true);
+            signalReady();
+          }
+        } catch (msgError) {
+          console.error('Error processing message:', msgError);
         }
       };
       
@@ -73,11 +96,15 @@ const SavedCasts = () => {
       
       // Multiple context requests with different formats
       setTimeout(() => {
-        console.log('📤 Requesting Farcaster context...');
-        // Try multiple message formats
-        window.parent.postMessage({ type: 'fc_request', method: 'fc_context' }, '*');
-        window.parent.postMessage({ type: 'fc_ready' }, '*');
-        window.parent.postMessage({ type: 'miniapp_ready' }, '*');
+        try {
+          console.log('📤 Requesting Farcaster context...');
+          // Try multiple message formats
+          window.parent.postMessage({ type: 'fc_request', method: 'fc_context' }, '*');
+          window.parent.postMessage({ type: 'fc_ready' }, '*');
+          window.parent.postMessage({ type: 'miniapp_ready' }, '*');
+        } catch (postError) {
+          console.error('Error posting messages:', postError);
+        }
       }, 100);
       
       // Fallback timeout - reduced to 2 seconds and force connection
@@ -85,25 +112,35 @@ const SavedCasts = () => {
         if (!isConnected) {
           console.log('⏱️ Timeout - forcing connection...');
           
-          // Try to get FID from URL parameters
-          const urlParams = new URLSearchParams(window.location.search);
-          const fidFromUrl = urlParams.get('fid') || urlParams.get('user_fid');
-          
-          if (fidFromUrl) {
-            console.log('🔗 Found FID in URL:', fidFromUrl);
-            setUserFid(parseInt(fidFromUrl));
+          try {
+            // Try to get FID from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const fidFromUrl = urlParams.get('fid') || urlParams.get('user_fid');
+            
+            if (fidFromUrl) {
+              console.log('🔗 Found FID in URL:', fidFromUrl);
+              setUserFid(parseInt(fidFromUrl));
+            }
+            
+            // Force connection even without FID for mini app context
+            console.log('🔄 Forcing connection to proceed...');
+            setIsConnected(true);
+            signalReady();
+          } catch (timeoutError) {
+            console.error('Error in timeout handler:', timeoutError);
+            setIsConnected(true);
+            signalReady();
           }
-          
-          // Force connection even without FID for mini app context
-          console.log('🔄 Forcing connection to proceed...');
-          setIsConnected(true);
-          signalReady();
         }
       }, 2000);
       
       // Return cleanup function
       return () => {
-        window.removeEventListener('message', messageHandler);
+        try {
+          window.removeEventListener('message', messageHandler);
+        } catch (cleanupError) {
+          console.error('Error cleaning up:', cleanupError);
+        }
       };
       
     } catch (error) {
@@ -135,11 +172,13 @@ const SavedCasts = () => {
     }
   );
 
-  // Filter casts based on search term
+  // Filter casts based on search term - with better error handling
   const filteredCasts = data?.filter(cast => {
+    if (!cast) return false;
+    
     const matchesSearch = !searchTerm || (
-      cast.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cast.author_username?.toLowerCase().includes(searchTerm.toLowerCase())
+      (cast.text && typeof cast.text === 'string' && cast.text.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (cast.author_username && typeof cast.author_username === 'string' && cast.author_username.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     
     return matchesSearch;
@@ -203,11 +242,13 @@ const SavedCasts = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-white/80">Initializing Mini App...</p>
           
-          {/* Debug info */}
-          <div className="mt-4 text-white/60 text-xs">
-            <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
-            <p>Ready: {isReady ? 'Yes' : 'No'}</p>
-            <p>Context: {window.parent !== window ? 'Mini App' : 'Browser'}</p>
+          {/* Debug info - more prominent */}
+          <div className="mt-6 bg-black/20 p-4 rounded-lg text-white text-sm">
+            <p><strong>Debug Info:</strong></p>
+            <p>Connected: <span className={isConnected ? 'text-green-300' : 'text-red-300'}>{isConnected ? 'Yes' : 'No'}</span></p>
+            <p>Ready: <span className={isReady ? 'text-green-300' : 'text-red-300'}>{isReady ? 'Yes' : 'No'}</span></p>
+            <p>Context: <span className="text-blue-300">{window.parent !== window ? 'Mini App' : 'Browser'}</span></p>
+            <p>User FID: <span className="text-yellow-300">{userFid || 'None'}</span></p>
           </div>
           
           {/* Emergency skip button after 5 seconds */}
