@@ -24,14 +24,14 @@
     <meta name="twitter:image" content="https://castkeepr.vercel.app/icon.png" />
     <meta name="twitter:site" content="@infinitehomie" />
     
-    <!-- Farcaster Frame metadata (FIXED: using property instead of name) -->
+    <!-- Farcaster Frame metadata -->
     <meta property="fc:frame" content="vNext" />
     <meta property="fc:frame:image" content="https://castkeepr.vercel.app/icon.png" />
     <meta property="fc:frame:button:1" content="Open CastKeepr" />
     <meta property="fc:frame:button:1:action" content="link" />
     <meta property="fc:frame:button:1:target" content="https://castkeepr.vercel.app" />
     
-    <!-- Additional meta tags for better embed validation -->
+    <!-- Additional meta tags -->
     <meta name="robots" content="index, follow" />
     <meta name="author" content="infinitehomie" />
     <meta name="keywords" content="Farcaster, casts, save, organize, social media, web3" />
@@ -39,43 +39,10 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
-    <!-- Debug logging for Mini App -->
+    <!-- Minimal debug logging -->
     <script>
-      console.log('🏰 CastKeepr Mini App Starting...');
-      console.log('📱 User Agent:', navigator.userAgent);
-      console.log('🖼️ In iframe:', window.parent !== window);
-      console.log('🌐 Current URL:', window.location.href);
-      console.log('📋 Referrer:', document.referrer);
-      
-      window.addEventListener('message', (event) => {
-        console.log('🔍 Debug - Message received:', {
-          origin: event.origin,
-          data: event.data,
-          source: event.source === window.parent ? 'parent' : 'other'
-        });
-      });
-      
-      window.addEventListener('load', () => {
-        console.log('📄 Page loaded, DOM ready');
-      });
-      
-      window.addEventListener('DOMContentLoaded', () => {
-        console.log('🔧 DOM Content Loaded');
-        
-        if (window.parent !== window) {
-          console.log('📱 Running in Mini App iframe');
-          
-          setTimeout(() => {
-            console.log('📤 Requesting initial context...');
-            window.parent.postMessage({
-              type: 'fc_request',
-              method: 'fc_context'
-            }, '*');
-          }, 500);
-        } else {
-          console.log('🌐 Running in standalone browser');
-        }
-      });
+      console.log('🏰 CastKeepr Starting...');
+      console.log('📱 Context:', window.parent !== window ? 'Mini App' : 'Browser');
     </script>
     
     <title>CastKeepr - Your Farcaster Cast Vault</title>
@@ -85,63 +52,49 @@
     <noscript>You need to enable JavaScript to run CastKeepr.</noscript>
     <div id="root"></div>
     
-    <!-- Enhanced loading fallback -->
+    <!-- Simple loading fallback -->
     <script>
-      if (!window.React) {
-        console.log('⚛️ React not loaded yet, showing fallback');
-        document.getElementById('root').innerHTML = `
-          <div style="
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-          ">
-            <div>
-              <h1 style="margin-bottom: 20px; font-size: 2.5rem; font-weight: bold;">🏰 CastKeepr</h1>
-              <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 20px;">Loading your saved casts...</p>
-              <div style="
-                width: 40px; 
-                height: 40px; 
-                border: 3px solid rgba(255,255,255,0.3); 
-                border-top: 3px solid white; 
-                border-radius: 50%; 
-                animation: spin 1s linear infinite;
-                margin: 20px auto;
-              "></div>
-              <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 20px;">
-                ${window.parent !== window ? 'Mini App Mode' : 'Browser Mode'}
-              </p>
-            </div>
-          </div>
-          <style>
-            body { margin: 0; padding: 0; }
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-        `;
-      }
-    </script>
-    
-    <!-- Mini App ready signal fallback -->
-    <script>
+      // Only show fallback if React takes too long to load
       setTimeout(() => {
-        if (window.parent !== window && !window.fcReadySignalSent) {
-          console.log('⏰ Timeout fallback - sending ready signal');
-          window.parent.postMessage({
-            type: 'fc_ready'
-          }, '*');
-          window.fcReadySignalSent = true;
+        if (!document.querySelector('#root').hasChildNodes()) {
+          console.log('⚛️ React loading fallback');
+          document.getElementById('root').innerHTML = `
+            <div style="
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              height: 100vh; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+              color: white;
+              text-align: center;
+              margin: 0;
+              padding: 20px;
+            ">
+              <div>
+                <h1 style="margin-bottom: 20px; font-size: 2.5rem;">🏰 CastKeepr</h1>
+                <p style="font-size: 1.2rem; opacity: 0.9;">Loading...</p>
+                <div style="
+                  width: 40px; 
+                  height: 40px; 
+                  border: 3px solid rgba(255,255,255,0.3); 
+                  border-top: 3px solid white; 
+                  border-radius: 50%; 
+                  animation: spin 1s linear infinite;
+                  margin: 20px auto;
+                "></div>
+              </div>
+            </div>
+            <style>
+              body { margin: 0; padding: 0; }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
+          `;
         }
-      }, 5000);
+      }, 2000);
     </script>
   </body>
 </html>

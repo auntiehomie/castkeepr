@@ -9,54 +9,46 @@ const SavedCasts = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
-  // Initialize Farcaster SDK
+  // Simplified initialization - no external SDKs
   useEffect(() => {
-    const initializeApp = async () => {
+    const initializeApp = () => {
       console.log('🚀 Initializing CastKeepr Mini App...');
       
       try {
         // Check if we're in a Farcaster Mini App context
         if (window.parent !== window) {
           console.log('📱 Running in Mini App context');
-          const cleanup = await initializeFarcasterSDK();
-          return cleanup;
+          initializeFarcasterSDK();
         } else {
           console.log('🌐 Running in browser context - using fallback');
           setIsConnected(true);
           signalReady();
-          return null;
         }
       } catch (initError) {
         console.error('Error in initializeApp:', initError);
         setIsConnected(true);
         signalReady();
-        return null;
       }
     };
 
-    let cleanup;
-    initializeApp()
-      .then(fn => cleanup = fn)
-      .catch(err => {
-        console.error('Promise error in initializeApp:', err);
-        setIsConnected(true);
-        signalReady();
-      });
+    initializeApp();
+    
+    // Emergency fallback - force ready after 3 seconds no matter what
+    const emergencyTimeout = setTimeout(() => {
+      console.log('🚨 Emergency timeout - forcing app to be ready');
+      setIsConnected(true);
+      setIsReady(true);
+    }, 3000);
     
     // Cleanup function
     return () => {
-      if (cleanup) {
-        try {
-          cleanup();
-        } catch (cleanupError) {
-          console.error('Error during cleanup:', cleanupError);
-        }
-      }
+      clearTimeout(emergencyTimeout);
     };
   }, []);
 
   const signalReady = () => {
     console.log('✅ Signaling app is ready');
+    console.log('Current state - isConnected:', isConnected, 'isReady:', isReady);
     setIsReady(true);
     
     // Signal to Farcaster that the app is ready
@@ -65,6 +57,12 @@ const SavedCasts = () => {
         type: 'fc_ready'
       }, '*');
     }
+    
+    // Force re-render after a brief delay
+    setTimeout(() => {
+      console.log('🔄 Force checking state after signalReady');
+      console.log('State check - isConnected:', isConnected, 'isReady:', isReady);
+    }, 100);
   };
 
   const initializeFarcasterSDK = async () => {
@@ -234,6 +232,8 @@ const SavedCasts = () => {
   };
 
   // Show loading screen until app is ready
+  console.log('🖼️ Render check - isReady:', isReady, 'isConnected:', isConnected, 'userFid:', userFid);
+  
   if (!isReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 p-4 flex items-center justify-center">
@@ -254,8 +254,9 @@ const SavedCasts = () => {
           {/* Emergency skip button after 5 seconds */}
           <button 
             onClick={() => {
+              console.log('🚨 Manual skip button clicked');
               setIsConnected(true);
-              signalReady();
+              setIsReady(true);
             }}
             className="mt-4 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm transition-colors"
           >
