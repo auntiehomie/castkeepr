@@ -8,6 +8,18 @@ const SavedCasts = () => {
   const [userFid, setUserFid] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [renderError, setRenderError] = useState(null);
+
+  // Error boundary
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('❌ Global error caught:', event.error);
+      setRenderError(event.error?.message || 'Unknown error');
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
 
   // Simplified initialization - no external SDKs
   useEffect(() => {
@@ -65,7 +77,7 @@ const SavedCasts = () => {
     }, 100);
   };
 
-  const initializeFarcasterSDK = async () => {
+  const initializeFarcasterSDK = () => {
     try {
       console.log('🔗 Connecting to Farcaster...');
       
@@ -92,60 +104,29 @@ const SavedCasts = () => {
       
       window.addEventListener('message', messageHandler);
       
-      // Multiple context requests with different formats
+      // Single context request
       setTimeout(() => {
         try {
           console.log('📤 Requesting Farcaster context...');
-          // Try multiple message formats
           window.parent.postMessage({ type: 'fc_request', method: 'fc_context' }, '*');
-          window.parent.postMessage({ type: 'fc_ready' }, '*');
-          window.parent.postMessage({ type: 'miniapp_ready' }, '*');
         } catch (postError) {
           console.error('Error posting messages:', postError);
         }
       }, 100);
       
-      // Fallback timeout - reduced to 2 seconds and force connection
+      // Fallback timeout
       setTimeout(() => {
         if (!isConnected) {
           console.log('⏱️ Timeout - forcing connection...');
-          
-          try {
-            // Try to get FID from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const fidFromUrl = urlParams.get('fid') || urlParams.get('user_fid');
-            
-            if (fidFromUrl) {
-              console.log('🔗 Found FID in URL:', fidFromUrl);
-              setUserFid(parseInt(fidFromUrl));
-            }
-            
-            // Force connection even without FID for mini app context
-            console.log('🔄 Forcing connection to proceed...');
-            setIsConnected(true);
-            signalReady();
-          } catch (timeoutError) {
-            console.error('Error in timeout handler:', timeoutError);
-            setIsConnected(true);
-            signalReady();
-          }
+          setIsConnected(true);
+          signalReady();
         }
       }, 2000);
-      
-      // Return cleanup function
-      return () => {
-        try {
-          window.removeEventListener('message', messageHandler);
-        } catch (cleanupError) {
-          console.error('Error cleaning up:', cleanupError);
-        }
-      };
       
     } catch (error) {
       console.error('❌ Failed to initialize Farcaster SDK:', error);
       setIsConnected(true);
       signalReady();
-      return null;
     }
   };
 
@@ -166,21 +147,50 @@ const SavedCasts = () => {
       },
       onSuccess: (data) => {
         console.log('✅ Data fetched successfully:', data?.length, 'casts');
-      }
+      },
+      // Add error boundaries
+      shouldRetryOnError: false,
+      errorRetryCount: 0
     }
   );
 
-  // Filter casts based on search term - with better error handling
-  const filteredCasts = data?.filter(cast => {
-    if (!cast) return false;
-    
-    const matchesSearch = !searchTerm || (
-      (cast.text && typeof cast.text === 'string' && cast.text.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (cast.author_username && typeof cast.author_username === 'string' && cast.author_username.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    
-    return matchesSearch;
-  }) || [];
+  // Filter casts with robust error handling
+  const filteredCasts = (() => {
+    try {
+      if (!data || !Array.isArray(data)) {
+        console.log('📊 No data or data is not array:', data);
+        return [];
+      }
+
+      return data.filter(cast => {
+        try {
+          if (!cast || typeof cast !== 'object') {
+            console.warn('⚠️ Invalid cast object:', cast);
+            return false;
+          }
+          
+          // Safe string checking
+          const text = cast.text || '';
+          const username = cast.author_username || '';
+          const searchLower = (searchTerm || '').toLowerCase();
+          
+          if (!searchTerm) return true;
+          
+          const matchesSearch = 
+            (typeof text === 'string' && text.toLowerCase().includes(searchLower)) ||
+            (typeof username === 'string' && username.toLowerCase().includes(searchLower));
+          
+          return matchesSearch;
+        } catch (filterError) {
+          console.error('❌ Error filtering cast:', filterError, cast);
+          return false;
+        }
+      });
+    } catch (mainError) {
+      console.error('❌ Error in filteredCasts:', mainError);
+      return [];
+    }
+  })();
 
   // Format timestamp for display
   const formatDate = (timestamp) => {
@@ -230,6 +240,27 @@ const SavedCasts = () => {
       console.error('Cast action failed:', error);
     }
   };
+
+  // Show error boundary if there's a render error
+  if (renderError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-600 via-purple-600 to-blue-500 p-4 flex items-center justify-center">
+        <div className="text-center bg-black/20 p-6 rounded-lg">
+          <h1 className="text-2xl font-bold text-white mb-4">❌ App Error</h1>
+          <p className="text-white/80 mb-4">{renderError}</p>
+          <button 
+            onClick={() => {
+              setRenderError(null);
+              window.location.reload();
+            }}
+            className="bg-white text-red-600 px-4 py-2 rounded font-semibold"
+          >
+            Reload App
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading screen until app is ready
   console.log('🖼️ Render check - isReady:', isReady, 'isConnected:', isConnected, 'userFid:', userFid);
